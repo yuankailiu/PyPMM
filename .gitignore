@@ -1,0 +1,16 @@
+### macOS ###
+*.DS_Store
+.AppleDouble
+.LSOverride
+
+### Python ###
+# Byte-compiled / optimized / DLL files
+*.py[cod]
+*$py.class
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+

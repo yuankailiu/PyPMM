@@ -1,46 +1,83 @@
 import os
+import collections
+
+import pypmm
 
 
 #################################  Plate boundary files  #######################################
 PLATE_BOUNDARY_FILE = {
-    'GSRM'   : os.path.abspath('./plate_boundary/GSRM/plate_outlines.lola'),
-    'MORVEL' : os.path.abspath('./plate_boundary/MORVEL/plate_outlines.lalo'),
+    'GSRM'   : os.path.join(pypmm.__path__[0], 'plate_boundary/GSRM/plate_outlines.lola'),
+    'MORVEL' : os.path.join(pypmm.__path__[0], 'plate_boundary/MORVEL/plate_outlines.lalo'),
+    'PB2002' : os.path.join(pypmm.__path__[0], 'plate_boundary/PB2002/PB2002_plates.dig.lola'),
 }
 
 #################################  Plate Motion Models  ########################################
 # Later will be moved to a separate script `pmm.py` in plate motion package
 
-# 1). ITRF2014-PMM defined in Altamimi et al. (2017)
-# Reference frame: ITRF2014
-Tag = collections.namedtuple('Tag', 'Abbrev num_site omega_x omega_y omega_z omega wrms_e wrms_n')
+# 1). ITRF Plate Motion Model
+# Reference frame: ITRF2014 (Altamimi et al., 2017)
+Tag = collections.namedtuple('Tag', 'Abbrev num_site omega_x omega_y omega_z omega \
+                                     omega_x_sig omega_y_sig omega_z_sig omega_sig wrms_e wrms_n')
 ITRF2014_PMM = {
-    'Antartica'     : Tag('ANTA'  ,   7,  -0.248,  -0.324,   0.675,  0.219,  0.20,  0.16),
-    'Arabia'        : Tag('ARAB'  ,   5,   1.154,  -0.136,   1.444,  0.515,  0.36,  0.43),
-    'Australia'     : Tag('AUST'  ,  36,   1.510,   1.182,   1.215,  0.631,  0.24,  0.20),
-    'Eurasia'       : Tag('EURA'  ,  97,  -0.085,  -0.531,   0.770,  0.261,  0.23,  0.19),
-    'India'         : Tag('INDI'  ,   3,   1.154,  -0.005,   1.454,  0.516,  0.21,  0.21),
-    'Nazca'         : Tag('NAZC'  ,   2,  -0.333,  -1.544,   1.623,  0.629,  0.13,  0.19),
-    'NorthAmerica'  : Tag('NOAM'  ,  72,   0.024,  -0.694,  -0.063,  0.194,  0.23,  0.28),
-    'Nubia'         : Tag('NUBI'  ,  24,   0.099,  -0.614,   0.733,  0.267,  0.28,  0.36),
-    'Pacific'       : Tag('PCFC'  ,  18,  -0.409,   1.047,  -2.169,  0.679,  0.36,  0.31),
-    'SouthAmerica'  : Tag('SOAM'  ,  30,  -0.270,  -0.301,  -0.140,  0.119,  0.34,  0.35),
-    'Somalia'       : Tag('SOMA'  ,   3,  -0.121,  -0.794,   0.884,  0.332,  0.32,  0.30),
+    'Antartica'    : Tag('ANTA',  7, -0.248, -0.324,  0.675, 0.219, 0.004, 0.004, 0.008, 0.002, 0.20, 0.16),
+    'Arabia'       : Tag('ARAB',  5,  1.154, -0.136,  1.444, 0.515, 0.020, 0.022, 0.014, 0.006, 0.36, 0.43),
+    'Australia'    : Tag('AUST', 36,  1.510,  1.182,  1.215, 0.631, 0.004, 0.004, 0.004, 0.001, 0.24, 0.20),
+    'Eurasia'      : Tag('EURA', 97, -0.085, -0.531,  0.770, 0.261, 0.004, 0.002, 0.005, 0.001, 0.23, 0.19),
+    'India'        : Tag('INDI',  3,  1.154, -0.005,  1.454, 0.516, 0.027, 0.117, 0.035, 0.012, 0.21, 0.21),
+    'Nazca'        : Tag('NAZC',  2, -0.333, -1.544,  1.623, 0.629, 0.006, 0.015, 0.007, 0.002, 0.13, 0.19),
+    'NorthAmerica' : Tag('NOAM', 72,  0.024, -0.694, -0.063, 0.194, 0.002, 0.005, 0.004, 0.001, 0.23, 0.28),
+    'Nubia'        : Tag('NUBI', 24,  0.099, -0.614,  0.733, 0.267, 0.004, 0.003, 0.003, 0.001, 0.28, 0.36),
+    'Pacific'      : Tag('PCFC', 18, -0.409,  1.047, -2.169, 0.679, 0.003, 0.004, 0.004, 0.001, 0.36, 0.31),
+    'SouthAmerica' : Tag('SOAM', 30, -0.270, -0.301, -0.140, 0.119, 0.006, 0.006, 0.003, 0.001, 0.34, 0.35),
+    'Somalia'      : Tag('SOMA',  3, -0.121, -0.794,  0.884, 0.332, 0.035, 0.034, 0.008, 0.008, 0.32, 0.30),
+    'ORB'          : (None, None, None, None, None, None) # (dTx, dTy, dTz, dTx_sig, dTy_sig, dTz_sig) [mm/yr]
+}
+# Reference frame: ITRF2020 (Altamimi et al., 2023)
+ITRF2020_PMM = {
+    'Amur'         : Tag('AMUR',  3, -0.131, -0.551,  0.837, 0.281, 0.009, 0.014, 0.015, 0.002, 0.17, 0.18),
+    'Antartica'    : Tag('ANTA', 15, -0.269, -0.321,  0.678, 0.220, 0.003, 0.003, 0.004, 0.001, 0.16, 0.24),
+    'Arabia'       : Tag('ARAB',  3,  1.129, -0.146,  1.438, 0.509, 0.025, 0.027, 0.016, 0.007, 0.15, 0.11),
+    'Australia'    : Tag('AUST',118,  1.487,  1.175,  1.223, 0.627, 0.003, 0.003, 0.003, 0.001, 0.19, 0.17),
+    'Caribbean'    : Tag('CARB',  5,  0.207, -1.422,  0.726, 0.447, 0.076, 0.174, 0.061, 0.053, 0.18, 0.56),
+    'Eurasia'      : Tag('EURA',143, -0.085, -0.519,  0.753, 0.255, 0.003, 0.003, 0.003, 0.001, 0.19, 0.21),
+    'India'        : Tag('INDI',  4,  1.137,  0.013,  1.444, 0.511, 0.008, 0.040, 0.016, 0.005, 0.41, 0.33),
+    'Nazca'        : Tag('NAZC',  3, -0.327, -1.561,  1.605, 0.629, 0.006, 0.018, 0.008, 0.003, 0.05, 0.10),
+    'NorthAmerica' : Tag('NOAM',108,  0.045, -0.666, -0.098, 0.187, 0.003, 0.003, 0.003, 0.001, 0.23, 0.31),
+    'Nubia'        : Tag('NUBI', 31,  0.090, -0.585,  0.717, 0.258, 0.003, 0.003, 0.004, 0.001, 0.18, 0.21),
+    'Pacific'      : Tag('PCFC', 20, -0.404,  1.021, -2.154, 0.672, 0.003, 0.003, 0.004, 0.001, 0.32, 0.30),
+    'SouthAmerica' : Tag('SOAM', 59, -0.261, -0.282, -0.157, 0.115, 0.004, 0.004, 0.003, 0.001, 0.30, 0.29),
+    'Somalia'      : Tag('SOMA',  6, -0.081, -0.719,  0.864, 0.313, 0.014, 0.015, 0.005, 0.004, 0.41, 0.21),
+    'ORB'          : (0.37, 0.35, 0.74, 0.08, 0.10, 0.09) # (dTx, dTy, dTz, dTx_sig, dTy_sig, dTz_sig) [mm/yr]
 }
 PMM_UNIT = {
-    'omega'   : 'deg/Ma',  # degree per megayear or one-million-year
-    'omega_x' : 'mas/yr',  # milli-arcsecond per year
-    'omega_y' : 'mas/yr',  # milli-arcsecond per year
-    'omega_z' : 'mas/yr',  # milli-arcsecond per year
-    'wrms_e'  : 'mm/yr',   # milli-meter per year, weighted root mean scatter
-    'wrms_n'  : 'mm/yr',   # milli-meter per year, weighted root mean scatter
+    'omega'       : 'deg/Ma',  # degree per million year
+    'omega_x'     : 'mas/yr',  # milli-arcsecond per year
+    'omega_y'     : 'mas/yr',  # milli-arcsecond per year
+    'omega_z'     : 'mas/yr',  # milli-arcsecond per year
+    'omega_x_sig' : 'mas/yr',  # milli-arcsecond per year
+    'omega_y_sig' : 'mas/yr',  # milli-arcsecond per year
+    'omega_z_sig' : 'mas/yr',  # milli-arcsecond per year
+    'wrms_e'      : 'mm/yr',   # milli-meter per year, weighted root mean scatter
+    'wrms_n'      : 'mm/yr',   # milli-meter per year, weighted root mean scatter
 }
 
+# url: https://itrf.ign.fr/en/solutions/transformations
+HELMERT_ITRF20_ITRF14 = {'T1' : -1.4  , 'dT1' :  0    , # mm, mm/yr
+                         'T2' : -0.9  , 'dT2' : -0.1  , # mm, mm/yr
+                         'T3' :  1.4  , 'dT3' :  0.2  , # mm, mm/yr
+                         'D'  : -0.42 , 'dD'  :  0    , # 10^-9
+                         'R1' :  0    , 'dR1' :  0    , # mas, mas/yr
+                         'R2' :  0    , 'dR2' :  0    , # mas, mas/yr
+                         'R3' :  0    , 'dR3' :  0    , # mas, mas/yr
+                         }
 
+
+# CAVEATS: need to update the errors
 # 2). GSRMv2.1 defined in Kreemer et al. (2014)
 # Reference frame: IGS08
 # (unit: Lat: °N; Lon: °E; omega: °/Ma)
 Tag = collections.namedtuple('Tag', 'Abbrev Lat Lon omega')
-GSRM_V21_PMM = {
+GSRM_NNR_V2_1_PMM = {
     'Africa'          : Tag('AF'  , 49.66   ,  -78.08   , 0.285),
     'Amur'            : Tag('AM'  , 61.64   ,  -101.29  , 0.287),
     'Antarctica'      : Tag('AN'  , 60.08   ,  -120.14  , 0.234),
@@ -94,6 +131,7 @@ GSRM_V21_PMM = {
 }
 
 
+# CAVEATS: need to update the errors
 # 3). NNR-MORVEL56 defined in Argus et al. (2011)
 # (unit: Lat: °N; Lon: °E; omega: °/Ma)
 # Note: we use "NU", instead of "nb" from Argus et al. (2011), for Nubia plate

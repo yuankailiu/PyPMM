@@ -1,0 +1,528 @@
+Table S2: Sites and their horizontal velocities used in the ITRF2020-PMM rotation poles estimation
+together with their one-sigma formal errors and post-fit residuals
+----------------------------------------------------------------------------------------------------------
+CODE DOMES #   Site Name        Plate       T   Lon     Lat       Ve     Vn     Se     Sn    Re     Rn (*)
+                                                DEG     DEG       ---------------mm/yr---------------
+----------------------------------------------------------------------------------------------------------
+DAEJ 23902M002 Daejeon          Amurian    P    127.374  36.399  26.78 -12.82  0.043  0.048 -0.112  0.173
+ULAB 24201M001 Ulaanbataar - zu Amurian    P    107.052  47.865  28.30  -8.70  0.039  0.048  0.208 -0.162
+7237 21611S001 Changchun        Amurian    LP   125.443  43.791  26.35 -12.18  0.236  0.253  0.196  0.499
+MAW1 66004M001 Mawson station   Antarctica P     62.871 -67.605  -3.68  -2.26  0.029  0.028 -0.121  0.005
+DUM1 91501M001 Ile des petrels  Antarctica DP   140.002 -66.665   8.12 -11.96  0.040  0.051  0.148  0.494
+FLM5 66061M002 Mount fleming    Antarctica P    160.271 -77.533   8.30 -12.02  0.247  0.276 -0.234 -0.109
+ROB4 66063M002 Cape roberts     Antarctica P    163.190 -77.034   9.17 -11.69  0.164  0.182 -0.119 -0.007
+FTP4 66062M002 Fishtail point   Antarctica P    162.565 -78.928   8.32 -11.73  0.252  0.278 -0.198  0.025
+MCM4 66001M003 Mac murdo        Antarctica P    166.669 -77.838   9.77 -11.34  0.029  0.031  0.053  0.039
+VESL 66009M001 Sanae            Antarctica P    357.158 -71.674  -0.29  10.16  0.052  0.058  0.133 -0.419
+COTE 66096M001 Mount coates     Antarctica P    161.998 -77.806   8.60 -11.68  0.055  0.069 -0.194  0.113
+KERG 91201M002 Kerguelen        Antarctica DP    70.256 -49.351   4.70  -3.79  0.034  0.037  0.225 -0.066
+CLRK 66104M001 Clarke mountains Antarctica P    218.126 -77.340  17.38  -1.72  0.113  0.132  0.668  1.057
+SCTB 66071M001 Scott base       Antarctica P    166.758 -77.849   9.51 -10.57  0.081  0.103 -0.214  0.808
+DAV1 66010M001 Davis            Antarctica P     77.973 -68.577  -2.94  -5.39  0.035  0.039  0.029  0.051
+BUMS 66107M001 Bumstead_nunatak Antarctica P    174.499 -85.961   8.08 -10.61  0.138  0.147 -0.322  0.041
+7342 66006S004 Syowa            Antarctica PR    39.586 -69.006  -3.54   2.77  0.337  0.343  0.575 -0.102
+CRQB 91301S003 Ile de la posses Antarctica DP    51.856 -46.432   4.88  -0.16  0.806  0.533 -0.346 -0.461
+BAHR 24901M002 Bahrein (juffar) Arabia     P     50.608  26.209  31.49  30.19  0.041  0.039 -0.167 -0.080
+NAMA 20103M001 Namas            Arabia     P     42.045  19.211  34.62  27.32  0.050  0.046  0.082  0.051
+SOLA 20101M001 Solar village -  Arabia     LP    46.401  24.911  31.78  29.02  0.048  0.047  0.160  0.184
+KARR 50139M001 Karratha         Australia  P    117.097 -20.981  38.87  58.24  0.036  0.033 -0.029  0.022
+SUNM 50143M001 Brisbane - wooll Australia  P    153.035 -27.485  21.68  53.60  0.166  0.162 -0.176 -0.184
+ADE1 50109S001 Salisbury        Australia  P    138.647 -34.729  24.71  58.33  0.040  0.043  0.048  0.143
+ALIC 50137M001 Alice springs -  Australia  P    133.886 -23.670  32.04  58.97  0.033  0.032  0.153 -0.020
+NNOR 50181M001 New norcia       Australia  P    116.193 -31.049  38.43  57.88  0.043  0.042  0.164 -0.096
+DARW 50134M001 Darwin i         Australia  P    131.133 -12.844  35.76  59.15  0.033  0.030  0.023 -0.115
+STR1 50119M002 Mount stromlo    Australia  LP   149.010 -35.316  18.41  55.30  0.026  0.027 -0.096 -0.010
+SYDN 50124M003 Sydney           Australia  P    151.150 -33.781  18.31  54.34  0.030  0.031 -0.103 -0.160
+MOBS 50182M001 Melbourne observ Australia  P    144.975 -37.829  19.33  56.94  0.028  0.029  0.168  0.329
+HIL1 50141S001 Hillarys - perth Australia  P    115.739 -31.826  39.14  56.92  0.112  0.112  0.764 -0.950
+CEDU 50138M001 Ceduna           Australia  P    133.810 -31.867  28.95  59.00  0.036  0.037  0.250  0.072
+RHPT 50187M001 Burnie, round hi Australia  P    145.962 -41.065  16.54  55.92  0.039  0.043  0.089 -0.349
+00NA 59975M001 Darwin supreme c Australia  P    130.844 -12.467  36.14  58.52  0.154  0.140  0.258 -0.765
+KALG 50188M001 Kalgoorlie       Australia  P    121.459 -30.784  35.91  58.94  0.088  0.088  0.315  0.100
+ESPA 50177M002 Esperance        Australia  P    121.894 -33.874  34.85  58.72  0.070  0.074  0.276 -0.146
+ALBY 50191M001 Albany           Australia  P    117.810 -34.950  36.94  58.09  0.054  0.054  0.298 -0.168
+JAB2 50136M002 Jabiru           Australia  P    132.895 -12.660  35.26  58.71  0.149  0.126 -0.127 -0.433
+ROBI 59976M001 Robina           Australia  P    153.381 -28.077  21.44  53.62  0.178  0.166  0.134 -0.007
+KELN 50197M001 Kellerberrin     Australia  P    117.703 -31.622  37.59  58.20  0.087  0.087  0.210 -0.070
+NORS 50194M001 Norseman         Australia  P    121.787 -32.260  35.27  58.89  0.071  0.074  0.215  0.021
+HYDN 50195M001 Hyden            Australia  P    118.892 -32.449  36.86  58.60  0.089  0.092  0.283  0.134
+WARA 50198M001 Warakurna        Australia  P    128.296 -25.037  34.03  59.24  0.052  0.050  0.235 -0.040
+YELO 50199M001 Yellowdine       Australia  P    119.646 -31.291  36.50  58.47  0.094  0.098  0.079 -0.125
+BUR2 50144M003 Burnie           Australia  P    145.915 -41.050  16.55  56.25  0.046  0.056  0.060 -0.031
+LORD 59998M001 Lord howe island Australia  P    159.061 -31.520  15.94  50.80  0.043  0.044 -0.302 -0.052
+BBOO 59997M001 Buckleboo        Australia  P    136.059 -32.810  27.33  58.51  0.048  0.052  0.266 -0.127
+YEEL 59996M001 Yeelana          Australia  P    135.784 -34.144  26.83  58.62  0.045  0.051  0.247 -0.039
+BEEC 59986M001 Beechworth       Australia  P    146.658 -36.346  19.16  56.10  0.054  0.057  0.023 -0.001
+WWLG 59988M001 West wyalong     Australia  P    147.322 -33.703  20.56  55.82  0.071  0.081  0.080 -0.098
+SA45 59987M001 Saltier          Australia  P    137.934 -32.470  26.38  58.40  0.049  0.055  0.175  0.058
+BDLE 50196M001 Bairnsdale       Australia  P    147.656 -37.759  17.42  55.62  0.062  0.074 -0.212 -0.133
+PTKL 50145M004 Port kembla      Australia  P    150.914 -34.476  17.95  54.65  0.051  0.055 -0.100  0.068
+DODA 59985M001 Douglas daly     Australia  P    131.187 -13.835  35.51  59.04  0.057  0.050 -0.021 -0.214
+LARR 59984M001 Larrimah         Australia  P    133.213 -15.573  34.75  58.92  0.074  0.068  0.143 -0.192
+TOOW 59982M001 Toowoomba        Australia  P    151.928 -27.534  21.68  54.59  0.101  0.095 -0.619  0.335
+ANDA 59971M001 Andamooka        Australia  P    137.160 -30.453  27.81  58.40  0.053  0.056  0.226 -0.095
+COOB 59970M001 Coober pedy      Australia  P    134.723 -29.035  29.59  58.84  0.049  0.047  0.152 -0.007
+GABO 59983M001 Gabo island      Australia  P    149.915 -37.568  16.28  54.81  0.063  0.076 -0.169 -0.121
+KAT1 59968M001 Katherine - nort Australia  P    132.153 -14.376  35.38  59.15  0.041  0.036  0.210 -0.046
+WAGN 59966M001 Wagin - western  Australia  P    117.410 -33.333  37.39  58.13  0.047  0.046  0.178 -0.066
+RAVN 59967M001 Ravensthorpe - w Australia  P    120.071 -33.597  35.86  58.63  0.092  0.098  0.185 -0.007
+MTCV 59965M001 Mount cavenagh - Australia  P    133.207 -25.946  31.57  59.02  0.043  0.040  0.212 -0.022
+WILU 59964M001 Wiluna           Australia  P    120.218 -26.626  37.19  58.76  0.047  0.044  0.162  0.047
+TBOB 59963M001 Tibooburra - new Australia  P    142.057 -29.450  25.75  57.56  0.053  0.055  0.092  0.058
+IHOE 59962M001 Ivanhoe - new so Australia  P    143.492 -32.864  23.19  57.06  0.089  0.092  0.170 -0.031
+BRO1 50176M003 Broome           Australia  P    122.209 -18.004  37.48  59.09  0.059  0.050  0.082  0.089
+NHIL 59960M001 Nhill - victoria Australia  P    141.646 -36.308  21.51  57.31  0.078  0.083 -0.544 -0.215
+WMGA 59961M001 Warramunga       Australia  P    134.355 -19.933  33.18  59.04  0.051  0.046  0.200  0.070
+HNIS 59959M001 Horn island - qu Australia  P    142.296 -10.590  34.27  57.35  0.104  0.088  0.170 -0.241
+WHNG 50218M001 Whangarei        Australia  P    174.315 -35.804   5.35  40.26  0.096  0.100 -0.451 -0.824
+LONA 59957M001 Leonora airport  Australia  P    121.319 -28.878  36.37  58.79  0.074  0.070  0.286 -0.046
+TURO 59956M001 Tuross head      Australia  P    150.122 -36.035  17.34  54.82  0.068  0.072 -0.056 -0.053
+BROC 59955M001 Bald rock, victo Australia  P    144.204 -36.031  20.89  56.84  0.061  0.065  0.148 -0.022
+STNY 50160M002 Stony point - vi Australia  P    145.214 -38.375  18.57  56.41  0.056  0.061 -0.109 -0.126
+RSBY 59953M001 Roslyn bay       Australia  P    150.790 -23.161  25.68  54.93  0.083  0.074  0.129  0.168
+LKYA 59952M001 Larrakeyah       Australia  P    130.825 -12.455  35.82  59.17  0.095  0.081 -0.068 -0.107
+BKNL 59951M001 Broken hill - ne Australia  P    141.470 -31.996  23.98  58.04  0.120  0.122 -0.601  0.420
+SPBY 50162M004 Spring bay - hob Australia  P    147.931 -42.546  14.02  55.57  0.086  0.112 -0.162 -0.018
+WLAL 59950M001 Wallal           Australia  P    120.643 -19.779  37.86  58.85  0.095  0.081  0.115  0.039
+UCLA 50153M002 Eucla - western  Australia  P    128.883 -31.680  31.75  59.52  0.099  0.097  0.338  0.302
+ARUB 59946M001 Arubiddy - weste Australia  P    125.924 -31.809  33.23  59.17  0.050  0.049  0.274 -0.010
+CNBN 59949M001 Coonabarabran    Australia  P    149.270 -31.333  21.14  55.23  0.076  0.076  0.130 -0.031
+BALA 59947M001 Balladonia - wes Australia  P    123.868 -32.461  34.11  58.99  0.111  0.110  0.242 -0.068
+CUT0 59945M001 Bentley          Australia  P    115.895 -32.004  37.99  57.26  0.073  0.071 -0.277 -0.638
+MAIN 59944M001 Mainoru          Australia  P    134.093 -14.046  34.82  59.00  0.091  0.075  0.052 -0.026
+RNSP 59943M001 Renner springs   Australia  P    133.817 -18.388  33.63  59.04  0.069  0.060 -0.008  0.005
+MTMA 59958M001 Mt. magnet       Australia  P    117.843 -28.115  37.82  58.23  0.144  0.134 -0.066 -0.089
+BING 59942M001 Bingleburra, new Australia  P    151.652 -32.412  19.27  54.32  0.077  0.078  0.160  0.006
+PTLD 50158M003 Portland, victor Australia  P    141.613 -38.344  20.93  57.23  0.118  0.141  0.051 -0.278
+RKLD 59941M001 Rocklands        Australia  P    137.835 -19.968  31.86  58.33  0.136  0.118  0.087 -0.146
+EXMT 59939M001 Exmouth          Australia  P    114.113 -21.961  39.96  57.72  0.069  0.060 -0.000  0.168
+FROY 59937M001 Fitzroy crossing Australia  P    125.800 -18.126  36.05  59.44  0.088  0.075 -0.206  0.167
+PERT 50133M001 Perth            Australia  PR   115.885 -31.802  38.35  57.76  0.049  0.047  0.043 -0.140
+FLND 59936M001 Flinders island  Australia  P    148.242 -40.214  15.39  55.40  0.102  0.115 -0.215 -0.112
+TOMP 59935M001 Tom price        Australia  P    117.400 -22.846  38.66  58.24  0.073  0.065 -0.017 -0.032
+DWNI 59704M001 Darwin ips       Australia  P    130.956 -12.443  35.59  59.30  0.292  0.246 -0.271  0.023
+JLCK 59928M001 Julia creek      Australia  P    141.739 -20.669  30.93  57.78  0.255  0.222  0.802  0.117
+BULA 59930M001 Boulia           Australia  P    139.903 -22.914  30.09  57.78  0.154  0.137  0.290 -0.275
+LAMB 59925M001 Lambina          Australia  P    134.063 -26.939  30.49  58.82  0.197  0.183 -0.105 -0.129
+MTDN 59922M001 Mount doreen     Australia  P    131.493 -22.133  33.45  59.37  0.233  0.206  0.114  0.166
+JERV 59923M001 Jervois          Australia  P    136.101 -22.861  31.52  58.79  0.143  0.128  0.217  0.062
+UNX2 50190M002 University of ne Australia  P    151.232 -33.918  18.06  54.43  0.317  0.327 -0.211 -0.029
+COEN 59921M001 Coen             Australia  P    143.177 -13.959  32.72  57.74  0.257  0.218  0.110  0.390
+LURA 59917M001 Laura            Australia  P    144.457 -15.578  31.80  57.10  0.206  0.173  0.201  0.120
+MEDO 59919M001 Meadow station   Australia  P    114.610 -26.757  39.56  57.56  0.094  0.084  0.023 -0.085
+NBRK 59915M001 North bourke, ne Australia  P    145.814 -29.677  23.74  56.57  0.159  0.155  0.017  0.120
+NTJN 59927M001 Neutral junction Australia  P    133.970 -21.457  32.74  59.07  0.107  0.094  0.128  0.070
+PTHL 59912M001 Port hedland i   Australia  P    118.679 -20.540  38.33  58.56  0.099  0.086 -0.038  0.050
+GASC 59911M001 Gascoyne junctio Australia  P    115.339 -24.633  39.62  57.80  0.255  0.225  0.244 -0.029
+NMTN 59909M001 Normanton        Australia  P    141.069 -17.672  31.54  58.05  0.127  0.107 -0.108  0.208
+LIAW 50192M001 Liaweenee        Australia  P    146.673 -41.902  15.45  55.87  0.092  0.121  0.008 -0.166
+THIO 92739M001 Thio             Australia  P    166.215 -21.609  21.08  46.83  0.190  0.160 -0.504  0.011
+MRO1 59913M001 Murchison radio  Australia  P    116.637 -26.697  38.55  58.05  0.081  0.074 -0.077 -0.047
+THEV 59940M001 Thevenard i      Australia  P    133.697 -32.129  28.84  58.96  0.101  0.100  0.190  0.031
+MULG 59898M001 Mulgathing       Australia  P    134.059 -30.282  29.45  58.90  0.233  0.226  0.205 -0.009
+KGIS 59910M001 King island      Australia  P    143.847 -39.942  18.44  56.96  0.167  0.186 -0.077  0.055
+BNDY 50185M001 Bundaberg argn   Australia  P    152.321 -24.908  23.96  53.87  0.189  0.177  0.090 -0.251
+DPRT 59705M001 Devonport high s Australia  P    146.350 -41.179  15.84  56.40  0.525  0.590 -0.295  0.265
+KMAN 59895M001 Kidman springs   Australia  P    130.956 -16.118  35.71  59.48  0.312  0.254  0.612  0.221
+BURA 50193M001 Burakin          Australia  P    117.175 -30.526  38.02  58.01  0.140  0.136  0.175 -0.171
+MCHL 59905M001 Mitchell - queen Australia  P    148.145 -26.359  24.60  55.66  0.108  0.101 -0.049 -0.059
+ARMC 59902M001 Aramac           Australia  P    145.245 -22.957  27.99  56.83  0.142  0.126  0.256  0.133
+HERN 59907M001 Hernani - new so Australia  P    152.487 -30.327  20.08  53.93  0.200  0.194 -0.071 -0.065
+WALH 59894M001 Walhallow        Australia  P    135.643 -17.776  33.40  58.88  0.198  0.168  0.139  0.059
+KILK 59918M001 Kilkivan         Australia  P    152.252 -26.084  23.33  54.17  0.159  0.144  0.207  0.028
+EDSV 59904M001 Eidsvold         Australia  P    151.120 -25.376  23.83  54.42  0.174  0.152 -0.211 -0.190
+HUGH 59929M001 Hughenden        Australia  P    144.204 -20.947  28.91  57.24  0.150  0.130 -0.234  0.218
+NSTA 59934M001 North star, new  Australia  P    150.444 -29.046  21.92  54.95  0.177  0.170 -0.038  0.111
+MTEM 59954M001 Mount emu - vict Australia  P    143.449 -37.588  20.33  57.07  0.143  0.156  0.099  0.017
+NCLF 59916M001 Northcliffe      Australia  P    116.123 -34.708  37.85  57.81  0.146  0.153  0.197 -0.122
+COOL 59933M001 Cooladdi         Australia  P    145.680 -26.742  25.63  56.30  0.211  0.197  0.144 -0.229
+BDVL 59931M001 Birdsville       Australia  P    139.348 -25.900  28.87  58.10  0.161  0.148  0.197 -0.038
+TMBO 59901M001 Tambo            Australia  P    146.284 -24.772  26.30  56.25  0.234  0.203 -0.041 -0.107
+NEBO 59903M001 Nebo             Australia  P    148.699 -21.640  26.90  55.59  0.283  0.247 -0.307  0.020
+1545 50103S010 Tidbinbilla      Australia  DLPR 148.978 -35.398  18.29  55.27  0.081  0.083 -0.172 -0.045
+7242 50116S002 Hobart           Australia  PR   147.441 -42.804  14.24  55.19  0.061  0.063 -0.077 -0.569
+7377 50243S001 Warkworth        Australia  PR   174.663 -36.435   5.00  40.19  0.282  0.302 -0.043 -0.620
+7090 50107M001 Yarragadee       Australia  DLPR 115.347 -29.046  38.90  57.78  0.046  0.054 -0.057 -0.024
+PRMI 82002M001 Magueyes island  Caribbean  P    292.955  17.970   8.57  11.71  0.066  0.056 -0.105 -0.290
+BYSP 82009M001 Bayamon science  Caribbean  P    293.839  18.408   8.70  13.61  0.129  0.105  0.328  0.954
+ZSU4 49286M001 San juan waas 4  Caribbean  P    294.007  18.431   8.54  13.84  0.287  0.233  0.177  1.060
+CN04 43901M001 Castries_lca2014 Caribbean  P    299.026  14.024  12.45  15.54  0.259  0.212  0.161 -0.930
+RDON 44102M001 Redonda          Caribbean  P    297.654  16.934   9.57  15.68  0.210  0.184 -0.286  0.211
+VILL 13406M001 Villafranca      Eurasia    P    356.048  40.444  19.22  16.49  0.062  0.070  0.118 -0.028
+EBRE 13410M001 Roquetes - torto Eurasia    P      0.492  40.821  19.89  16.01  0.028  0.029  0.100 -0.311
+NEWL 13273M103 Bartinney        Eurasia    P    354.457  50.103  15.89  16.55  0.059  0.079 -0.281  0.137
+BELL 13431M001 Bellmunt de sega Eurasia    P      1.401  41.600  19.62  16.22  0.090  0.114 -0.162 -0.038
+SJDV 10090M001 Saint-jean-des-v Eurasia    P      4.677  45.879  19.50  16.05  0.032  0.037  0.137  0.066
+HRM1 13235S001 Hermitage        Eurasia    P    358.716  51.454  16.60  16.49  0.039  0.050 -0.073  0.238
+UZHL 12301M001 Uzhgorod         Eurasia    P     22.298  48.632  21.99  13.78  0.053  0.067  0.017 -0.173
+ARTU 12362M001 Arti             Eurasia    P     58.560  56.430  25.30   6.03  0.024  0.025  0.026 -0.069
+AJAC 10077M005 Ajaccio          Eurasia    P      8.763  41.927  21.02  15.73  0.041  0.045  0.024  0.023
+DARE 13208S001 Daresbury        Eurasia    P    357.360  53.345  15.73  16.58  0.063  0.084 -0.076  0.299
+EIJS 13533M001 Eijsden          Eurasia    P      5.684  50.758  17.95  15.90  0.034  0.040 -0.371  0.065
+CACE 13447M001 Caceres          Eurasia    P    353.658  39.479  18.46  16.97  0.069  0.082 -0.458  0.381
+BUDP 10101M003 Copenhaguen      Eurasia    P     12.500  55.739  18.11  14.94  0.025  0.029 -0.263 -0.175
+NPLD 13234M003 Teddington       Eurasia    P    359.660  51.421  17.21  16.20  0.141  0.199  0.327 -0.006
+CAGL 12725M003 Cagliari         Eurasia    P      8.973  39.136  21.53  15.94  0.031  0.031 -0.042  0.213
+BOGO 12207M002 Borowa gora      Eurasia    P     21.035  52.476  20.64  14.32  0.029  0.033 -0.254  0.241
+SULP 12366M001 Lviv             Eurasia    P     24.014  49.836  21.70  13.91  0.046  0.057 -0.313  0.235
+LROC 10023M001 La rochelle      Eurasia    P    358.781  46.159  18.27  16.39  0.025  0.025  0.107  0.065
+OPMT 10001S006 Paris            Eurasia    P      2.335  48.836  18.21  15.96  0.030  0.034  0.059 -0.141
+PTBB 14234M001 Braunschweig     Eurasia    P     10.460  52.296  18.96  15.53  0.034  0.043  0.079  0.146
+MIKL 12335M001 Mykolaiv         Eurasia    P     31.973  46.973  23.50  12.26  0.052  0.068 -0.327 -0.076
+VLNS 10801M001 Vilnius          Eurasia    P     25.299  54.653  21.07  13.55  0.043  0.058 -0.096  0.163
+NICE 10012M001 Nice             Eurasia    P      7.300  43.726  20.56  15.82  0.045  0.049  0.204  0.005
+HEAU 10055M004 Flottemanville - Eurasia    P    358.222  49.581  17.28  16.20  0.117  0.138  0.171 -0.103
+TITZ 14278M001 Titz-jackerath   Eurasia    P      6.432  51.035  18.31  15.65  0.080  0.103 -0.084 -0.122
+WARE 13114M001 Waremme          Eurasia    P      5.245  50.690  18.39  15.67  0.035  0.043  0.145 -0.196
+REDU 13102M001 Redu             Eurasia    P      5.145  50.002  18.32  15.76  0.046  0.058 -0.090 -0.126
+SHEE 13236M001 Sheerness        Eurasia    P      0.743  51.446  16.72  16.56  0.095  0.121 -0.382  0.414
+SABL 10063M001 Sables d olonne  Eurasia    P    358.194  46.530  17.97  16.00  0.111  0.126  0.021 -0.346
+GROI 10064M001 Pen men - groix  Eurasia    P    356.492  47.648  16.95  16.07  0.125  0.144 -0.344 -0.322
+SKN0 10480M001 Skanor           Eurasia    P     12.858  55.414  18.08  14.77  0.046  0.055 -0.459 -0.312
+SASS 14281M001 Sassnitz         Eurasia    P     13.643  54.514  19.03  14.71  0.028  0.032  0.089 -0.301
+CARF 19195M002 Cardiff          Eurasia    P    356.893  51.531  16.31  16.33  0.338  0.417  0.050  0.007
+JOZE 12204M001 Jozefoslaw - war Eurasia    P     21.032  52.097  20.95  14.12  0.030  0.035 -0.030  0.033
+DILL 14286M001 Dillingen - saar Eurasia    P      6.700  49.372  18.98  15.44  0.069  0.087  0.095 -0.333
+DIEP 14287M001 Diepholz - niede Eurasia    P      8.342  52.588  18.52  15.97  0.046  0.058  0.152  0.385
+IJMU 13537M001 Ijmuiden         Eurasia    P      4.556  52.462  17.76  16.19  0.047  0.058  0.146  0.300
+KARL 14216M001 Karlsruhe        Eurasia    P      8.411  49.011  19.36  15.89  0.031  0.036  0.048  0.261
+FERR 10087M001 Cap ferret       Eurasia    P    358.751  44.646  18.56  16.19  0.236  0.261  0.009 -0.165
+CNNS 10089M001 Cannes - la bocc Eurasia    P      7.016  43.555  20.66  16.06  0.085  0.093  0.326  0.220
+BORJ 14268M002 Borkum           Eurasia    P      6.666  53.579  17.62  15.53  0.030  0.035 -0.127 -0.184
+HOL2 14285M002 Kiel-holtenau    Eurasia    P     10.157  54.373  18.06  15.25  0.067  0.085 -0.205 -0.130
+LDB2 14114M002 Lindenberg       Eurasia    P     14.121  52.209  19.60  14.99  0.040  0.051 -0.037 -0.006
+COST 11407M001 Constanta        Eurasia    P     28.658  44.162  23.68  12.40  0.052  0.060 -0.115 -0.581
+BAIA 11406M001 Baia mare        Eurasia    P     23.558  47.652  22.40  13.50  0.047  0.060  0.019 -0.282
+ZARA 13462M001 Zaragoza         Eurasia    P    359.118  41.633  19.09  16.13  0.036  0.040 -0.269 -0.244
+PMTG 13289M003 Portsmouth       Eurasia    P    358.889  50.802  16.88  16.51  0.051  0.064 -0.013  0.261
+DGLG 10017M002 Malo-les-bains-d Eurasia    P      2.345  50.994  17.66  16.18  0.083  0.096  0.093  0.115
+VIGO 13450M001 Vigo             Eurasia    P    351.187  42.184  17.57  16.84  0.037  0.042 -0.203  0.260
+MOBJ 12365M002 Obninsk/moscow s Eurasia    P     36.570  55.115  22.95  11.49  0.039  0.050  0.007  0.191
+SHOE 19197M001 Shoeburyness     Eurasia    P      0.827  51.555  17.34  16.28  0.039  0.047  0.256  0.134
+ZWE2 12330M003 Zwenigorod       Eurasia    P     36.758  55.699  22.69  11.57  0.041  0.057 -0.156  0.321
+BORR 13480M001 Borriana         Eurasia    P    359.917  39.905  20.13  16.21  0.076  0.089  0.231 -0.152
+GELL 10908M001 Gellin           Eurasia    P     14.322  53.450  19.28  14.89  0.131  0.165 -0.083 -0.054
+LAMA 12209M001 Lamkowko         Eurasia    P     20.670  53.892  20.38  14.29  0.031  0.036 -0.111  0.180
+PALI 19725M001 Salins de giraud Eurasia    P      4.810  43.376  19.90  16.32  0.065  0.072 -0.086  0.304
+HELG 14264M001 Helgoland island Eurasia    P      7.893  54.174  17.91  15.80  0.082  0.110  0.074  0.203
+MALL 13444M001 Palma de mallorc Eurasia    P      2.625  39.553  20.45  16.34  0.069  0.071  0.009  0.123
+KHAR 12314M001 Kharkiv          Eurasia    P     36.239  50.005  24.04  11.96  0.093  0.119  0.124  0.506
+TGDE 10320M001 Tregde vannstand Eurasia    P      7.555  58.006  16.22  15.50  0.043  0.057 -0.433 -0.066
+PMTH 13229M001 Plymouth         Eurasia    P    355.874  50.416  16.35  16.59  0.042  0.050 -0.021  0.212
+HOLY 19146M001 Holyhead         Eurasia    P    355.358  53.318  15.63  16.48  0.073  0.097  0.247  0.129
+PBIL 19153M001 Portland bill    Eurasia    P    357.543  50.522  16.76  15.91  0.223  0.271  0.070 -0.405
+EZEV 19896M001 Eze - village    Eurasia    P      7.497  43.774  20.43  15.77  0.049  0.054  0.050 -0.021
+WEYB 19178M001 Weybourne        Eurasia    P      1.130  52.945  16.94  15.89  0.043  0.051  0.192 -0.220
+ANLX 19163M001 Angle            Eurasia    P    354.921  51.689  15.83  16.43  0.099  0.120  0.046  0.052
+AMBL 19967M001 Ambrumesnil      Eurasia    P      0.994  49.859  17.27  15.94  0.223  0.261 -0.328 -0.219
+IBIZ 13454S001 Ibiza tide gauge Eurasia    P      1.449  38.911  20.35  16.28  0.093  0.097 -0.027 -0.020
+ROTG 19938M001 Roscoff          Eurasia    P    356.034  48.718  17.04  16.40  0.150  0.178  0.134  0.011
+SCOA 10088M002 Ciboure (saint-j Eurasia    P    358.318  43.395  18.69  16.45  0.053  0.060 -0.092  0.065
+BEA2 10079S001 Port-vendres     Eurasia    P      3.137  42.515  20.82  15.43  0.331  0.341  0.948 -0.714
+MIMZ 19841M001 Mimizan          Eurasia    P    358.772  44.201  18.95  16.55  0.085  0.096  0.283  0.195
+BIAZ 10074M002 Biarritz         Eurasia    P    358.463  43.472  19.21  16.24  0.076  0.086  0.421 -0.144
+GOPE 11502M002 Pecny - ondrejov Eurasia    P     14.786  49.914  20.44  14.99  0.035  0.041  0.118  0.042
+SMTG 19936M001 Saint-malo       Eurasia    P    357.973  48.641  17.49  16.36  0.376  0.410  0.166  0.038
+SWAS 19193M001 Swansea          Eurasia    P    356.018  51.566  16.18  16.54  0.043  0.052  0.126  0.184
+CAMP 19916M001 Campo dell oro a Eurasia    P      8.791  41.918  20.95  16.06  0.065  0.070 -0.051  0.355
+SARI 19917M001 Sari solenzara   Eurasia    P      9.403  41.858  21.28  15.90  0.117  0.126  0.166  0.254
+LURI 19920M001 Luri             Eurasia    P      9.476  42.888  20.82  16.18  0.116  0.127 -0.093  0.556
+LEIJ 14267M001 Leipzig          Eurasia    P     12.374  51.354  19.40  15.24  0.049  0.062 -0.111  0.039
+EXMO 19167M001 Exmouth          Eurasia    P    356.590  50.613  16.84  16.22  0.081  0.100  0.371 -0.122
+COUD 19868M001 Coudekerque-bran Eurasia    P      2.374  51.023  17.44  16.03  0.074  0.088 -0.118 -0.028
+WARN 14277M002 Warnemuende      Eurasia    P     12.101  54.170  18.64  15.28  0.038  0.046 -0.078  0.098
+VALE 13439M001 Valencia         Eurasia    P    359.662  39.481  19.52  16.46  0.097  0.105 -0.432  0.083
+BMHG 19833M001 Beaumont-hague   Eurasia    P    358.170  49.659  16.83  16.60  0.098  0.120 -0.244  0.297
+LPPZ 19878M001 Lampaul-plouarze Eurasia    P    355.240  48.446  17.08  16.90  0.090  0.109  0.264  0.481
+KONE 19879M001 Concarneau       Eurasia    P    356.098  47.866  17.19  16.58  0.076  0.090  0.030  0.173
+DIPL 19850M001 Dinart pleurtuit Eurasia    P    357.924  48.590  17.43  16.46  0.084  0.100  0.105  0.133
+ROYA 19821M001 Royan            Eurasia    P    358.976  45.639  18.34  16.27  0.109  0.127  0.003 -0.055
+SARZ 19855M001 Sarzeau          Eurasia    P    357.230  47.524  17.51  16.45  0.082  0.099  0.030  0.080
+ANGL 19820M001 Angles           Eurasia    P    358.594  46.406  18.10  16.40  0.086  0.101  0.047  0.066
+HOBU 14202M003 Hohenbunstorf    Eurasia    P     10.476  53.051  18.48  15.44  0.044  0.053 -0.210  0.065
+TLLG 13630M001 Tallaght         Eurasia    P    353.637  53.291  15.11  16.49  0.172  0.217  0.102  0.104
+YST0 10484M001 Ystad            Eurasia    P     13.836  55.433  18.43  14.68  0.077  0.096 -0.305 -0.289
+MORP 13299S001 Morpeth          Eurasia    P    358.315  55.213  15.47  16.48  0.069  0.095  0.021  0.270
+BRUX 13101M010 Brussels ukkle - Eurasia    P      4.359  50.798  17.92  15.97  0.030  0.034 -0.118  0.041
+DLF1 13502M009 Delft            Eurasia    P      4.387  51.986  17.71  15.76  0.041  0.051 -0.007 -0.157
+LDK0 10487M001 Loddekopinge     Eurasia    P     12.996  55.767  18.35  14.71  0.077  0.095 -0.118 -0.358
+SKL0 10479M001 Skillinge        Eurasia    P     14.279  55.475  18.56  14.70  0.070  0.086 -0.259 -0.219
+CANT 13438M001 Cantabria        Eurasia    P    356.202  43.472  18.46  16.62  0.057  0.067  0.088  0.152
+BRST 10004M004 Brest            Eurasia    P    355.503  48.380  16.75  16.87  0.033  0.038 -0.141  0.458
+TUBO 11503M001 Brno             Eurasia    P     16.593  49.206  21.00  14.97  0.059  0.074  0.174  0.230
+SETE 19940M001 Sete             Eurasia    P      3.699  43.398  19.98  16.13  0.088  0.106  0.206  0.040
+CT3F 19714M001 Gonneville la ma Eurasia    P      0.218  49.644  17.71  16.36  0.147  0.178  0.205  0.158
+EQHE 19932M001 Equihen          Eurasia    P      1.568  50.680  17.47  16.27  0.168  0.204 -0.017  0.150
+GOR2 14115M002 Gorleben         Eurasia    P     11.350  53.050  18.54  15.07  0.122  0.154 -0.322 -0.218
+BADH 14288M001 Bad homburg      Eurasia    P      8.610  50.228  19.04  15.69  0.071  0.091 -0.010  0.089
+MARS 10073M008 Marseille        Eurasia    P      5.354  43.279  20.10  16.01  0.056  0.065  0.000  0.038
+VFCH 10046M001 Villefranche-sur Eurasia    P      1.720  47.294  18.68  16.10  0.062  0.077  0.245 -0.059
+FYHA 10126M001 Fynshav          Eurasia    P      9.986  54.994  17.80  15.28  0.091  0.111 -0.257 -0.111
+WROC 12217M001 Wroclaw          Eurasia    P     17.062  51.113  20.21  14.86  0.048  0.056 -0.260  0.208
+PADT 19154M001 Padstow          Eurasia    P    355.063  50.541  16.66  16.54  0.311  0.387  0.492  0.143
+PRIE 19867M001 Marseille        Eurasia    P      5.373  43.277  20.23  16.09  0.080  0.090  0.129  0.118
+CEBR 13408M001 Cebreros         Eurasia    P    355.632  40.453  18.71  16.39  0.064  0.074 -0.315 -0.133
+ILDX 19724M001 Ile d'aix        Eurasia    P    358.823  46.009  18.26  16.25  0.131  0.152  0.058 -0.073
+KZN2 12374M001 Kazan federal un Eurasia    P     49.119  55.791  24.91   8.61  0.138  0.172  0.432  0.129
+SOPU 19386M001 Sopuerta         Eurasia    P    356.846  43.277  18.79  16.50  0.385  0.434  0.247  0.059
+STNA 19668M001 Saint-nazaire    Eurasia    P    357.797  47.271  17.64  16.32  0.151  0.178 -0.028 -0.028
+FRAN 19648M001 Le havre - vigie Eurasia    P      0.174  49.477  17.78  16.54  0.260  0.312  0.239  0.327
+POOL 19138M001 Poole            Eurasia    P    358.089  50.776  16.34  16.06  0.161  0.195 -0.393 -0.230
+FFMJ 14279M001 Frankfurt        Eurasia    P      8.665  50.091  19.46  15.54  0.094  0.119  0.365 -0.055
+TERS 13534M001 Terschelling     Eurasia    P      5.219  53.363  18.19  15.38  0.079  0.099  0.689 -0.448
+HOFJ 14289M001 Hof              Eurasia    P     11.876  50.313  19.88  15.14  0.148  0.192  0.209 -0.132
+CAEN 19994M001 Caen             Eurasia    P    359.543  49.183  16.55  17.11  0.115  0.146 -0.939  0.868
+CTZ3 19718M002 Bertreville-sain Eurasia    P      1.050  49.815  17.29  16.36  0.228  0.274 -0.330  0.197
+VLIS 13538M001 Vlissingen       Eurasia    P      3.597  51.443  18.62  16.09  0.165  0.201  0.920  0.116
+DUNQ 19670M001 Dunkerque mareg  Eurasia    P      2.367  51.048  17.80  16.94  0.283  0.341  0.242  0.877
+CHTG 19622M001 Cherbourg        Eurasia    P    358.365  49.651  17.22  16.52  0.463  0.539  0.105  0.231
+OROS 11207M001 Oroshaza         Eurasia    P     20.671  46.555  22.66  14.42  0.082  0.098  0.549  0.191
+TEJH 10124M001 Tejn havn        Eurasia    P     14.839  55.248  18.70  14.84  0.228  0.283 -0.288 -0.018
+BCL1 19482M001 Barcelona - puer Eurasia    P      2.166  41.342  20.18  15.75  0.270  0.292  0.208 -0.466
+ENTZ 10014M002 Strasbourg       Eurasia    P      7.640  48.549  19.40  15.71  0.084  0.106  0.118  0.005
+BGBC 18664M001 Bourg-blanc      Eurasia    P    355.503  48.481  17.03  16.28  0.445  0.527  0.173 -0.135
+7224 14201S004 Wettzell         Eurasia    LPR   12.877  49.145  20.35  15.40  0.039  0.036  0.202  0.213
+7203 14209S001 Effelsberg       Eurasia    R      6.884  50.525  18.54  15.94  0.143  0.148 -0.084  0.195
+1567 13407S014 Madrid-robledo   Eurasia    PR   355.749  40.427  18.72  16.78  0.231  0.239 -0.337  0.256
+7840 13212S001 Herstmonceux cas Eurasia    LP     0.336  50.867  17.16  16.32  0.041  0.045 -0.018  0.141
+1884 12302S002 Riga             Eurasia    LP    24.059  56.949  20.51  13.32  0.229  0.272  0.148 -0.224
+7845 10002S002 Grasse (oca)     Eurasia    LP     6.922  43.755  20.39  16.02  0.052  0.056  0.112  0.178
+7810 14001S007 Zimmerwald       Eurasia    LP     7.465  46.877  19.72  16.22  0.043  0.045  0.061  0.466
+7811 12205S001 Borowiec         Eurasia    LP    17.075  52.277  20.13  14.70  0.072  0.074 -0.068  0.068
+7841 14106S011 Potsdam          Eurasia    LP    13.061  52.383  19.23  15.21  0.072  0.078 -0.152  0.103
+TLHA 10003S003 Toulouse         Eurasia    DP     1.485  43.550  19.54  16.15  0.195  0.182  0.209 -0.074
+IISC 22306M002 Bangalore        India      P     77.570  13.021  41.36  35.28  0.097  0.077 -0.077  0.395
+DHAK 24601M001 Dhaka            India      P     90.401  23.727  40.59  35.51  0.084  0.077  0.145 -0.181
+LCK4 22305M005 Lucknow          India      P     80.956  26.912  36.22  34.60  0.095  0.087 -0.631 -0.522
+HYDE 22307M001 Hyderabad        India      P     78.551  17.417  40.62  35.12  0.085  0.069  0.505  0.160
+PLTC 40496M003 Platteville      N. America P    255.274  40.182 -14.73  -6.03  0.034  0.036 -0.132 -0.296
+SOL1 49907S001 Solomons island  N. America P    283.546  38.319 -14.56   4.16  0.084  0.096 -0.079 -0.033
+WIL1 49464M001 Wilkes barre, le N. America P    283.985  41.305 -15.48   3.87  0.041  0.046 -0.314 -0.460
+PSU1 49466M001 Penn state, stat N. America P    282.150  40.807 -15.33   3.75  0.047  0.054 -0.195  0.060
+HNPT 49913S001 Horn point       N. America P    283.870  38.589 -14.41   3.38  0.067  0.076  0.122 -0.928
+KYW1 49852S001 Key west naval a N. America P    278.347  24.582  -9.99   2.32  0.733  0.651  0.850 -0.079
+MOB1 49863S001 Mobile           N. America P    271.976  30.228 -13.35  -0.33  0.183  0.173 -0.797 -0.449
+LCDT 49625S001 Libertyville     N. America P    272.040  42.295 -15.66   0.27  0.047  0.055  0.000  0.157
+GUST 49632S001 Gustavus, ohio   N. America P    279.284  41.463 -15.45   2.46  0.048  0.056 -0.075 -0.223
+ADRI 49637S001 Adrian, michigan N. America P    275.976  41.919 -15.73   1.48  0.030  0.032 -0.175 -0.029
+EPRT 49928S001 Eastport         N. America P    293.008  44.909 -15.44   7.10  0.050  0.061 -0.078 -0.301
+GNVL 49592S001 Gainesville, flo N. America P    277.723  29.687 -12.02   2.35  0.052  0.051  0.329  0.186
+OKCB 49587S001 Okeechobee, flor N. America P    279.145  27.266 -11.31   2.80  0.059  0.056  0.312  0.123
+HLFX 40120M001 Halifax          N. America P    296.389  44.684 -15.21   8.68  0.033  0.037 -0.209  0.164
+GLPT 49467M001 Gloucester point N. America P    283.501  37.249 -13.98   4.33  0.469  0.485  0.233  0.146
+SIHS 49207M001 Sicily island    N. America P    268.345  31.843 -12.89  -0.82  0.074  0.076  0.091  0.351
+GACC 49208M001 Columbia county  N. America P    277.866  33.546 -13.51   2.80  0.092  0.098 -0.091  0.594
+PCLA 49413M001 Pensacola        N. America P    272.811  30.469 -12.50   0.39  0.069  0.068  0.116 -0.027
+FMYR 49247M001 Fort myers       N. America P    278.136  26.591 -11.04   2.50  0.125  0.111  0.400  0.175
+TXTY 49218M001 Tyler            N. America P    264.606  32.250 -12.78  -2.22  0.084  0.087  0.251  0.278
+BLW2 49219M001 Blw2_ebry_wy2003 N. America P    250.442  42.767 -15.02  -7.50  0.033  0.035 -0.236 -0.155
+WYLC 49220M001 Laramie county   N. America P    255.225  41.105 -14.80  -6.04  0.063  0.077 -0.002 -0.289
+P037 49213M001 Freemontapco2004 N. America P    254.895  38.422 -14.26  -6.07  0.033  0.035 -0.088 -0.212
+ESCU 40168M001 Escuminac        N. America P    295.201  47.073 -15.73   8.10  0.046  0.057 -0.147 -0.002
+CAM2 40514M001 Campeche         N. America P    269.460  19.844  -8.41   0.12  0.198  0.182  1.007  0.901
+MTY2 40518M001 Monterrey        N. America P    259.687  25.716 -10.68  -3.68  0.055  0.053  0.369  0.531
+TAMP 40516M001 Tampico          N. America P    262.136  22.278  -9.57  -3.00  0.058  0.054  0.523  0.366
+TXGA 49872M001 Galveston        N. America P    265.227  29.328 -11.85  -2.41  0.222  0.209  0.377 -0.133
+P044 49227M001 Akronarpt_co2004 N. America P    256.778  40.172 -14.79  -5.41  0.035  0.038 -0.104 -0.183
+CTGR 49404M001 Groton           N. America P    287.950  41.335 -15.09   5.47  0.116  0.126 -0.125 -0.233
+PWEL 40158M001 Saint catherine  N. America P    280.780  43.237 -15.92   2.80  0.041  0.050 -0.185 -0.397
+GRIS 49399M001 Grand isle       N. America P    270.043  29.266 -12.12  -0.73  0.041  0.039  0.151 -0.166
+NAPL 49528S001 Naples, florida  N. America P    278.224  26.149 -10.86   2.51  0.192  0.168  0.452  0.155
+FLIU 49460S001 Fliu             N. America P    279.626  25.755 -10.21   3.20  0.418  0.403  0.957  0.346
+NYLP 49230M001 Lockport         N. America P    281.246  43.165 -16.06   2.66  0.056  0.066 -0.356 -0.698
+NMGR 73101M001 Grants nmdot     N. America P    252.070  35.217 -13.61  -6.58  0.050  0.055 -0.394  0.219
+P055 49245M001 Glendivewtmt2006 N. America P    255.315  47.117 -15.42  -6.54  0.064  0.085  0.634 -0.799
+CCV6 40426M003 Cap canaveral i  N. America P    279.455  28.460 -11.60   3.01  0.073  0.071  0.363  0.223
+ZKC1 49206M001 Kansas cty waas  N. America P    265.209  38.880 -14.72  -2.12  0.044  0.049  0.027  0.177
+BARH 49927S001 Bar harbor       N. America P    291.778  44.395 -15.26   7.06  0.031  0.034  0.095  0.072
+RED5 49417M001 Reedy point - de N. America P    284.430  39.561 -14.70   4.09  0.202  0.212  0.041 -0.405
+P036 49212M001 Angelfire_nm2004 N. America P    254.706  36.420 -13.95  -6.12  0.038  0.041 -0.272 -0.202
+AMC2 40472S004 Colorado springs N. America P    255.475  38.803 -14.52  -5.81  0.040  0.044 -0.226 -0.143
+ANP5 49908M001 Annapolis        N. America P    283.391  39.010 -14.49   4.17  0.063  0.069  0.159  0.031
+PAPH 49385M001 Philadelphia wat N. America P    284.824  40.013 -14.82   4.43  0.114  0.122  0.006 -0.203
+TN23 49248M001 Tdot district 23 N. America P    275.001  35.920 -14.17   1.61  0.053  0.054 -0.085  0.423
+KSU1 49240M001 Ksu1_ksun_ks2006 N. America P    263.391  39.101 -14.60  -2.79  0.044  0.050  0.145  0.143
+NCKN 49225M001 Kenansville      N. America P    282.019  34.942 -13.64   3.89  0.053  0.056  0.035  0.221
+TXLI 49221M001 Liberty          N. America P    265.229  30.056 -12.75  -2.24  0.055  0.055 -0.310  0.031
+P777 49251M001 Rockyhillar_2008 N. America P    267.455  35.703 -14.01  -1.28  0.064  0.066 -0.007  0.217
+NYQN 49384M010 Queens - new yor N. America P    286.270  40.720 -14.82   4.80  0.212  0.227  0.099 -0.326
+ICT1 49258M001 Wichita ict1     N. America P    262.691  37.588 -14.42  -2.80  0.042  0.044 -0.067  0.378
+MNRT 49231M001 Rothsay          N. America P    263.709  46.491 -16.28  -3.56  0.047  0.058  0.130 -0.708
+SCHY 49382M001 Longs - south ca N. America P    281.265  33.940 -13.23   3.53  0.068  0.070  0.209  0.123
+ANP6 49263M001 Annapolis 6      N. America P    283.391  39.011 -14.85   4.18  0.062  0.072 -0.198  0.046
+SCHA 49383M001 Charleston ports N. America P    280.075  32.779 -12.66   3.28  0.063  0.063  0.503  0.283
+KA14 49264M001 Eiu coop         N. America P    271.815  39.480 -14.81   0.26  0.062  0.072  0.187  0.220
+BSMK 49636S001 Bismark, north d N. America P    259.183  46.821 -16.02  -4.94  0.049  0.060  0.241 -0.522
+MOWR 49267M001 Modot warrenton  N. America P    268.839  38.815 -14.86  -0.41  0.061  0.066 -0.054  0.600
+ECSD 49576M002 Sioux falls      N. America P    263.386  43.734 -15.71  -3.17  0.045  0.055  0.102 -0.215
+P051 49243M001 Billingsapmt2005 N. America P    251.454  45.807 -14.96  -7.82  0.055  0.071  0.523 -0.793
+TXHO 49241M001 Hondo            N. America P    260.866  29.344 -12.23  -3.16  0.068  0.069 -0.111  0.646
+DOBS 49562S001 Dobson, north ca N. America P    279.280  36.425 -13.97   3.07  0.062  0.071  0.179  0.371
+NOR1 49618S001 Cadillac         N. America P    274.563  44.256 -16.34   0.47  0.056  0.069 -0.240 -0.521
+ALAN 49272M001 Andalusia pol de N. America P    273.516  31.307 -12.71   0.82  0.063  0.062  0.142  0.151
+TN36 49249M001 Tdot district 36 N. America P    272.674  35.256 -13.91   0.75  0.060  0.066  0.013  0.394
+NYBP 49386M001 Battery park - n N. America P    285.986  40.701 -14.97   4.53  0.084  0.097 -0.045 -0.503
+NYBR 49276M001 Brooklyn pier    N. America P    285.999  40.689 -14.98   4.72  0.101  0.108 -0.052 -0.314
+MNBE 49232M001 Blue earth       N. America P    265.878  43.663 -15.58  -2.33  0.079  0.097  0.301 -0.253
+MNCA 49222M001 Caledonia        N. America P    268.504  43.633 -16.04  -1.18  0.058  0.070 -0.109 -0.028
+MONE 49275M001 Modot nevada     N. America P    265.650  37.866 -14.27  -2.10  0.092  0.102  0.241  0.038
+LOYF 49261M001 Annapolis md     N. America P    283.478  38.974 -14.68   4.25  0.137  0.144 -0.041  0.086
+UNBJ 40146M002 Fredericton      N. America P    293.358  45.950 -15.87   7.40  0.032  0.035 -0.330 -0.107
+INRI 49283M001 Loyola universit N. America P    269.881  29.937 -12.51  -0.72  0.333  0.312 -0.045 -0.099
+MEMA 49284M001 Machias          N. America P    292.542  44.710 -15.21   6.41  0.133  0.150  0.152 -0.828
+PPER 40189M001 Pointe-au-pere   N. America P    291.531  48.517 -15.98   6.24  0.098  0.127  0.211 -0.634
+SHE2 40169M002 Shediac          N. America P    295.448  46.221 -15.65   8.36  0.076  0.100 -0.250  0.166
+KNGV 49103M001 Kingsville - ont N. America P    277.265  42.027 -15.48   1.76  0.096  0.119  0.078 -0.202
+P804 49285M001 Therockddbga2012 N. America P    275.774  32.963 -13.20   1.54  0.088  0.090  0.088  0.070
+LEBA 49631S001 Lebanon, ohio    N. America P    275.717  39.431 -14.98   1.66  0.068  0.077 -0.013  0.236
+CBRG 49102M001 Cobourg - ontari N. America P    281.836  43.956 -16.75   3.25  0.102  0.124 -0.893 -0.319
+IUCO 40452M002 Bloomington      N. America P    273.494  39.174 -14.84   1.27  0.064  0.071  0.081  0.631
+TXRP 49287M001 Rockport         N. America P    262.951  28.062 -11.26  -2.81  0.740  0.677  0.554  0.261
+TXLU 49573S001 Lubbock, texas   N. America P    258.157  33.535 -13.00  -4.49  0.108  0.116  0.139  0.251
+TXFS 49273M001 Fort stockton    N. America P    257.133  30.894 -12.19  -5.20  0.173  0.176  0.207 -0.109
+TXKM 49274M001 Kermit           N. America P    256.891  31.843 -12.20  -4.56  0.201  0.211  0.440  0.612
+TXLN 49289M001 Laguna vista     N. America P    262.699  26.095 -10.89  -2.59  0.263  0.234  0.355  0.577
+NIST 49507M002 Boulder, colorad N. America P    254.737  39.995 -14.86  -6.07  0.064  0.073 -0.343 -0.158
+P394 49290M001 Bakercity_or2007 N. America P    242.200  44.835 -14.05  -9.83  0.160  0.210  0.252  0.124
+NCSH 49211M001 Shelby           N. America P    278.509  35.282 -14.16   2.80  0.117  0.124 -0.299  0.370
+SDNY 49123M001 Sydney           N. America P    299.811  46.161 -15.68  10.15  0.167  0.194 -0.762  0.550
+AL92 49271M001 Aldot 9 div dis  N. America P    272.224  30.916 -12.73   0.81  0.148  0.144  0.013  0.602
+ALDI 49396M001 Dauphin island - N. America P    271.922  30.249 -12.17  -0.24  0.243  0.225  0.388 -0.341
+SBCH 49292M001 Shell beach      N. America P    270.327  29.868 -11.95  -0.07  0.458  0.425  0.493  0.397
+AL90 70101M001 Aldot 9 div off  N. America P    271.968  30.691 -12.20   0.57  0.236  0.221  0.486  0.449
+NCBE 49262M001 Beaufort         N. America P    283.328  34.719 -13.52   4.29  0.319  0.319  0.059  0.154
+CRLV 49135M001 Charlevoix       N. America P    289.673  47.550 -16.50   5.42  0.274  0.368 -0.339 -0.834
+TSKT 49125M001 Tusket           N. America P    294.037  43.870 -15.08   7.85  0.277  0.318 -0.023  0.100
+MRC1 49654M002 Stafford         N. America P    282.629  38.499 -14.74   3.65  0.172  0.185 -0.178 -0.220
+TMG2 49433M002 Table mountain g N. America P    254.767  40.130 -15.33  -6.17  0.300  0.353 -0.779 -0.264
+7204 40441S001 Greenbank        N. America R    280.164  38.438 -14.32   3.07  0.179  0.193  0.304  0.067
+7209 40440S003 Westford         N. America PR   288.506  42.613 -15.11   5.50  0.044  0.042  0.104 -0.385
+7611 40463S001 Los alamos, nm   N. America PR   253.754  35.775 -13.78  -6.02  0.048  0.048 -0.319  0.223
+7613 40442S017 Fort davis       N. America LPR  256.055  30.635 -12.35  -5.37  0.048  0.049 -0.069  0.088
+7612 40465S001 North liberty    N. America PR   268.426  41.771 -15.31  -1.02  0.048  0.047  0.199  0.152
+7618 40471S001 Hancock          N. America PR   288.013  42.934 -15.27   5.32  0.062  0.057  0.043 -0.400
+7234 40456S001 Pietown          N. America PR   251.881  34.301 -13.42  -6.68  0.064  0.064 -0.444  0.186
+7105 40451M105 Washington       N. America DLPR 283.172  39.021 -14.60   4.03  0.045  0.048  0.062 -0.031
+EISL 41703M003 Easter island    Nazca      DP   250.617 -27.148  66.57  -6.12  0.053  0.050 -0.037 -0.087
+GLPS 42005M002 Santa cruz       Nazca      DP   269.696  -0.743  50.67  10.64  0.073  0.063  0.041  0.066
+GALA 42004S001 Puerto baquerizo Nazca      P    270.384  -0.901  49.72  12.20  1.503  0.678 -1.037  1.046
+GOUG 30608M001 Gough island     Nubia      P    350.119 -40.349  21.10  18.51  0.110  0.120  0.008  0.419
+RBAY 30315M001 Richardsbay      Nubia      P     32.078 -28.796  16.28  17.59  0.073  0.072  0.210 -0.104
+SIMO 30307M001 Simonstown       Nubia      P     18.440 -34.188  16.49  19.31  0.104  0.107 -0.355  0.412
+DRBN 30328M001 Old durban inter Nubia      P     30.947 -29.965  16.17  16.87  0.394  0.372  0.274 -0.961
+SUTH 30314M002 Sutherland       Nubia      P     20.810 -32.380  16.80  18.92  0.031  0.028 -0.101  0.149
+OUAG 33101M001 Ouagadougou      Nubia      P    358.488  12.356  21.18  18.59  0.122  0.100 -0.145 -0.071
+YKRO 32601M001 Yamoussoukro     Nubia      P    354.760   6.871  21.77  18.23  0.042  0.035 -0.096 -0.231
+RABT 35001M002 Rabat            Nubia      P    353.146  33.998  16.33  17.96  0.033  0.033  0.278 -0.087
+BJCO 32701M001 Cotonou          Nubia      P      2.450   6.385  22.11  18.53  0.055  0.044 -0.026 -0.361
+BJKA 32704M001 Kandi            Nubia      P      2.928  11.125  21.52  18.46  0.071  0.059 -0.205 -0.401
+STHL 30606M003 Saint-helena     Nubia      P    354.333 -15.943  22.82  18.40  0.044  0.036 -0.128 -0.136
+AGUI 31322M001 Aguimes - gran c Nubia      P    344.554  27.904  15.88  17.74  0.152  0.142 -0.670  0.525
+NKLG 32809M002 Libreville       Nubia      DP     9.672   0.354  22.27  19.05  0.039  0.032 -0.181  0.003
+DRBA 30327M001 Durban           Nubia      P     31.023 -29.851  16.28  17.69  0.146  0.134  0.368 -0.134
+MAUA 34701M002 Maun             Nubia      P     23.528 -19.902  19.92  18.68  0.125  0.111  0.473  0.121
+MONG 34602M001 Mongu            Nubia      P     23.151 -15.254  20.81  19.33  0.190  0.158  0.429  0.759
+HNUS 30322M001 Hermanus         Nubia      P     19.223 -34.425  16.55  19.03  0.060  0.063 -0.091  0.176
+SBOK 30320M001 Springbok        Nubia      P     17.879 -29.669  17.92  19.03  0.064  0.062 -0.149  0.094
+ULDI 30318M001 Ulundi           Nubia      P     31.421 -28.293  16.48  17.77  0.072  0.071  0.163  0.001
+DEAR 30316M001 De aar           Nubia      P     23.993 -30.665  16.71  18.67  0.063  0.063 -0.105  0.135
+ZAMB 34601M001 Lusaka           Nubia      P     28.311 -15.426  20.03  18.39  0.047  0.040  0.146  0.292
+GRAF 31327M001 Grafcan - teneri Nubia      P    343.732  28.454  16.02  17.27  0.280  0.271 -0.252  0.171
+MAS1 31303M002 Maspalomas       Nubia      P    344.367  27.764  16.54  17.21  0.034  0.032 -0.020  0.019
+ELDA 30329M001 East london      Nubia      P     27.833 -33.037  15.23  18.19  0.160  0.155 -0.262  0.019
+FUER 31330M001 Fuerteventura    Nubia      P    346.140  28.499  16.33  17.42  0.176  0.158 -0.255  0.021
+PLBA 30330M001 Port elizabeth   Nubia      P     25.611 -33.984  15.79  18.55  0.266  0.259  0.185  0.160
+WIND 31101M001 Windhoek         Nubia      P     17.089 -22.575  20.02  19.26  0.084  0.074  0.326  0.285
+JCTW 30305M001 Le cap i         Nubia      P     18.469 -33.951  16.75  18.12  0.199  0.194 -0.152 -0.781
+DATG 34107M002 Dakar - plateau  Nubia      P    342.580  14.676  19.26  16.73  0.755  0.633 -0.603 -0.345
+DAKA 34101S004 Dakar            Nubia      DP   342.567  14.732  19.72  17.51  2.537  1.130 -0.129  0.434
+SALB 39601S002 Palmeira - cape  Nubia      P    337.065  16.732  19.23  16.08  0.688  0.548  0.280 -0.145
+KWJ1 50506M001 Kwajalein atoll  Pacific    P    167.730   8.722 -69.06  29.50  0.258  0.197  0.061  0.530
+HILO 49979S001 Hilo airport     Pacific    P    204.947  19.719 -62.59  35.38  0.090  0.080 -0.362  0.640
+LHUE 49980S001 Lihue, kauai     Pacific    P    200.661  21.985 -61.71  34.47  0.175  0.164  0.491 -0.328
+MAUI 40445S008 Maui             Pacific    LP   203.743  20.707 -62.05  34.59  0.028  0.025  0.043 -0.208
+KOK1 49896S001 Kokole point     Pacific    P    200.242  21.983 -62.18  35.36  0.808  0.673  0.118  0.569
+UPO1 49895S001 Upolu point      Pacific    P    204.116  20.246 -62.65  34.79  0.846  0.713 -0.468  0.025
+CKIS 50213M003 Rarotonga        Pacific    P    200.199 -21.201 -62.62  34.95  0.067  0.058 -0.577  0.500
+CHAT 50207M001 Chatham island ( Pacific    DP   183.434 -43.956 -40.66  32.94  0.043  0.048  0.397  0.473
+MCIL 21789S001 Minamitorishima  Pacific    P    153.979  24.290 -71.63  23.67  0.057  0.057 -0.147  0.042
+POHN 51601M001 Pohnpei          Pacific    P    158.210   6.960 -70.19  24.89  0.328  0.275 -0.787 -0.550
+CHTI 50242M001 Chatham island n Pacific    DP   183.383 -43.735 -40.98  32.74  0.043  0.048  0.265  0.277
+TBTG 92401M002 Tubuai           Pacific    P    210.524 -23.342 -64.16  34.12  0.119  0.104 -0.773  0.111
+NAUR 50701M001 Nauru            Pacific    P    166.926  -0.552 -67.08  28.75  0.111  0.093 -0.219  0.090
+TUVA 51101M001 Funafuti         Pacific    P    179.197  -8.525 -65.13  32.37  0.121  0.097 -0.788  0.303
+MKTG 92509M001 Makemo tide gaug Pacific    P    216.431 -16.627 -67.40  33.46  0.388  0.308 -1.017  0.087
+MAJU 51501M001 Majuro           Pacific    P    171.365   7.119 -69.02  30.39  0.124  0.102 -0.405  0.278
+7298 40424S007 Kauai            Pacific    DPR  200.335  22.127 -62.36  34.68  0.054  0.050 -0.125 -0.117
+7617 40477S001 Mauna kea        Pacific    PR   204.544  19.801 -62.72  34.62  0.166  0.160 -0.407 -0.157
+7124 92201M007 Papeete (tahiti) Pacific    P    210.394 -17.577 -65.92  34.23  0.156  0.149 -0.719  0.130
+RIMB 92301S004 Rikitea (ile man Pacific    DP   225.035 -23.130 -67.38  31.29  0.660  0.438 -0.828 -0.326
+ASC1 30602M001 Ascension iii    S. America DP   345.588  -7.951  -4.94  11.05  0.072  0.059  0.219 -0.188
+BRAZ 41606M001 Brasilia         S. America P    312.122 -15.947  -4.01  12.49  0.052  0.047 -0.130 -0.061
+POAL 41616M001 Porto alegre     S. America P    308.880 -30.074  -2.40  12.16  0.090  0.093  0.442 -0.218
+SALV 41618M001 Salvador         S. America P    321.488 -13.009  -3.92  12.00  0.191  0.163  0.513 -0.596
+CUIB 41603M001 Cuiba            S. America P    303.930 -15.555  -2.97  11.93  0.069  0.060  0.476 -0.328
+MPLA 41521M001 Mar del plata    S. America P    302.469 -38.036  -0.51  12.25  0.624  0.672  0.961  0.242
+LKTH 80601S001 Port stanley - l S. America P    302.149 -51.698   0.40  12.45  0.438  0.541  0.501  0.616
+VBCA 41512M001 Bahia blanca     S. America P    297.731 -38.701  -0.38  11.01  0.167  0.183  0.457 -0.680
+NEIA 41620M002 Cananeia         S. America P    312.075 -25.020  -3.42  12.46  0.167  0.165  0.031 -0.043
+NAUS 41614M002 Manaus           S. America P    299.945  -3.023  -4.01  11.83  0.105  0.091  0.163 -0.257
+MAPA 41629M001 Macapa           S. America P    308.903   0.047  -4.37  12.46  0.155  0.138 -0.021 -0.049
+BELE 41622M001 Belem            S. America P    311.537  -1.409  -4.52  12.76  0.099  0.085 -0.201  0.191
+RECF 41617M001 Recif            S. America P    325.048  -8.051  -4.60  12.45  0.153  0.125 -0.060 -0.078
+BOMJ 41612M001 Bom jesus da lap S. America P    316.578 -13.256  -5.15  11.90  0.087  0.080 -0.955 -0.710
+BOAV 41636M001 Boa vista        S. America P    299.299   2.845  -4.47  11.90  0.072  0.059  0.072 -0.156
+RIOB 41645M001 Rio branco       S. America P    292.197  -9.965  -2.91  11.17  0.154  0.121  0.536 -0.300
+SAVO 41643M001 Salvador incra   S. America P    321.568 -12.939  -4.57  12.54  0.043  0.037 -0.138 -0.053
+SAGA 41639M001 Sao gabriel      S. America P    292.942  -0.144  -4.34  11.32  0.122  0.110  0.028 -0.262
+MSCG 41649M001 Campo grande     S. America P    305.459 -20.441  -2.51  12.95  0.072  0.066  0.696  0.643
+PEPE 41650M001 Petrolina        S. America P    319.494  -9.384  -4.69  12.71  0.112  0.102 -0.321  0.091
+TOPL 41648M001 Palmas           S. America P    311.669 -10.171  -4.47  12.39  0.144  0.126 -0.396 -0.169
+POVE 41628M001 Porto velho      S. America P    296.104  -8.709  -3.59  11.83  0.080  0.065  0.083  0.033
+MGMC 41624M002 Montes claros    S. America P    316.142 -16.716  -4.00  13.03  0.064  0.058  0.077  0.427
+GOJA 41654M001 Jatai            S. America P    308.274 -17.883  -3.30  12.52  0.137  0.123  0.255  0.083
+SALU 41640M001 Sao luis         S. America P    315.788  -2.593  -4.18  12.81  0.109  0.097  0.150  0.186
+MGBH 41667M001 Belo horizonte   S. America P    316.075 -19.942  -4.44  12.25  0.147  0.141 -0.460 -0.337
+CAYN 97302M002 Cayenne          S. America P    307.690   4.949  -4.73  13.00  0.521  0.403 -0.224  0.534
+MTCO 41670M001 Colider          S. America P    304.544 -10.804  -3.85  12.46  0.073  0.062 -0.071  0.153
+IQUI 42204M001 Iquitos          S. America P    286.731  -3.767  -3.65  10.58  0.161  0.124  0.348 -0.386
+CEFE 41637M001 Vitoria          S. America P    319.681 -20.311  -4.28  12.44  0.098  0.089 -0.048 -0.149
+BABR 41684M001 Barreiras        S. America P    315.005 -12.150  -3.97  12.43  0.098  0.087  0.172 -0.173
+MGUB 41652M001 University of ub S. America P    311.744 -18.919  -3.78  12.33  0.073  0.066 -0.056 -0.198
+PPTE 41611M002 Presidente prude S. America P    308.591 -22.120  -3.02  12.27  0.122  0.112  0.309 -0.150
+UFPR 41610M002 Curitiba - paran S. America P    310.769 -25.448  -3.52  12.55  0.050  0.048 -0.213  0.079
+MGIN 41647M001 Inconfidentes    S. America P    313.672 -22.319  -3.92  12.79  0.062  0.058 -0.212  0.245
+ROCD 41679M001 Colorado d oeste S. America P    299.456 -13.122  -3.60  12.02  0.210  0.175 -0.177  0.003
+PAIT 41685M001 Itaituba         S. America P    303.964  -4.288  -4.26  12.98  0.372  0.300 -0.121  0.680
+KOUG 97301M402 Kourou           S. America DP   307.360   5.098  -4.63  12.59  0.048  0.040 -0.120  0.136
+CRAT 41619M001 Crato            S. America P    320.584  -7.238  -4.75  12.32  0.170  0.129 -0.348 -0.289
+IMPZ 41615M001 Imperatriz       S. America P    312.503  -5.492  -4.21  12.73  0.087  0.074  0.027  0.143
+ONRJ 41635M001 Predio da hora - S. America P    316.776 -22.896  -4.13  12.35  0.083  0.077 -0.199 -0.228
+IMBT 41638M001 Imbituba         S. America P    311.344 -28.235  -3.64  12.09  0.248  0.233 -0.434 -0.376
+AMTE 48091M001 Tefe             S. America P    295.293  -3.346  -3.91  11.83  0.298  0.239  0.200  0.067
+IRYL 97309M001 Ile royale       S. America P    307.413   5.285  -4.66  12.60  0.231  0.185 -0.143  0.142
+FALK 80602M001 Stanley          S. America P    302.126 -51.694   0.15  12.63  0.058  0.074  0.248  0.795
+RNNA 41668M001 Natal - inpe     S. America P    324.792  -5.836  -4.66  12.40  0.150  0.130 -0.165 -0.130
+CEFT 41682M001 Docas do ceara   S. America P    321.527  -3.711  -5.16  12.42  0.637  0.505 -0.758 -0.178
+MTSR 41689M001 Sorriso          S. America P    304.273 -12.545  -4.45  12.89  0.216  0.181 -0.787  0.598
+CHAC 41553M001 Chaco            S. America P    301.040 -27.420  -2.33  11.48  0.143  0.139 -0.033 -0.537
+SMAR 41621M001 Santa maria      S. America P    306.283 -29.719  -2.50  12.05  0.144  0.147  0.102 -0.222
+YEMA 41569M001 Laguna yema      S. America P    298.763 -24.281  -2.81  11.10  0.205  0.191 -0.408 -0.792
+UYMO 42301M001 Montevideo       S. America P    303.740 -34.888  -2.81  11.74  0.302  0.304 -0.902 -0.365
+MTV2 42323S001 Montevideo - pal S. America P    303.824 -34.914  -2.66  11.61  0.155  0.173 -0.744 -0.501
+SPTU 48085M001 Tupa sao p       S. America P    309.508 -21.929  -2.64  12.83  0.227  0.199  0.766  0.380
+UYTA 42302M001 Tacuarembo       S. America P    304.062 -31.683  -2.64  11.66  0.302  0.339 -0.416 -0.489
+AGGO 41596M001 La plata - argen S. America PR   301.860 -34.874  -2.61  11.55  0.203  0.210 -0.914 -0.447
+7297 41602S001 Forteleza        S. America PR   321.574  -3.878  -4.35  12.39  0.062  0.064  0.052 -0.205
+7407 48081S001 Campus universit S. America L    312.135 -15.773  -4.21  11.69  1.246  1.103 -0.329 -0.861
+CACB 41609S001 Cachoeira paulis S. America DP   314.998 -22.683  -3.70  12.59  0.478  0.431  0.101  0.022
+SEY1 39801M001 Mahe island      Somalia    P     55.479  -4.674  24.80  11.49  0.053  0.046 -0.132  0.176
+ABPO 33302M001 Ambohimpanompo   Somalia    P     47.229 -19.018  18.80  14.36  0.071  0.063 -0.606  0.233
+MTVE 30906M001 Mtwara           Somalia    P     40.166 -10.260  22.72  15.52  0.319  0.254 -0.727 -0.672
+MAL2 33201M003 Malindi          Somalia    P     40.194  -2.996  26.27  15.93  0.051  0.043  0.402 -0.200
+MAYG 90101M001 Dzaoudzi         Somalia    P     45.258 -12.782  21.59  14.55  0.183  0.149 -0.601 -0.151
+REUB 97401S002 La reunion       Somalia    DP    55.572 -21.208  18.27  11.73  0.210  0.173  0.552  0.355
+----------------------------------------------------------------------------------------------------------
+(*) T: IERS Space Geodesy Technique Abbreviation: D for DORIS, L for SLR, P for GNSS and R for VLBI.
+Ve, Vn: East and North Velocity components, Se, Sn: East and North Sigmas, Re, Rn: East and North
+Residuals

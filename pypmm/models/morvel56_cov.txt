@@ -1,0 +1,62 @@
+# Argus et al., 2011
+# https://doi.org/10.1029/2011GC003751
+# Table 2. Covariance Matrices of the NNR-MORVEL56 Plate Angular Velocities (No-Net-Rotation Frame Fixed) (*a)
+# (*a) Each 3 by 3 covariance matrix is in Cartestian coordinates (x axis (0°N °E), y axis (0°N 90°E), and z axis (90°N)) and in units of 10e-10 radians2 Ma-2.
+Plate	        Abbv	xx	    xy	    xz	    yy	    yz	    zz
+Amur	        am	    223	    -67	    -102	376	    309	    535
+Antarctica	    an	    49	    32	    -20	    34	    -10	    36
+Arabia	        ar	    208	    182	    112	    398	    104	    87
+Australia	    au	    137	    68	    66	    116	    2	    134
+Capricorn	    cp	    197	    105	    68	    696	    -378	370
+Caribbean	    ca	    106	    -137	12	    485	    -41	    165
+Cocos	        co	    774	    273	    -616	1036	-367	613
+Eurasia	        eu	    68	    5	    7	    65	    14	    87
+India	        in	    65	    80	    32  	451	    59	    49
+JuandeFuca	    jf	    10237	13370	-15644	17958	-20659	25637
+Lwandle	        lw	    312	    257	    -382	281	    -324	517
+Macquarie	    mq	    14827	-6847	27711	3509	-13202	52672
+Nazca	        nz	    75	    147	    -121	564	    -199	332
+NorthAmerica	na	    59	    -30	    -18	    119	    54	    108
+Nubia	        nb	    31	    0	    -27	    74	    13	    54
+Pacific	        pa	    43	    31	    -5	    245	    8	    72
+PhilippineSea	ps	    955	    -960	-578	1358	644	    468
+Rivera	        ri	    23657	77569	-28379	257086	-93915	35257
+Sandwich	    sw	    130549	-65658	-228089	35925	116372	402768
+Scotia	        sc	    244	    -296	-756	520	    1161	3784
+Somalia	        sm	    32	    47	    -2	    163	    -6	    37
+SouthAmerica	sa	    42	    0	    -26	    62	    50	    102
+Sunda	        su	    216	    -131	21	    943	    185	    190
+Sur	            sr	    1590	-158	-2228	93	    322	    3340
+Yangtze	        yz	    178	    -12	    17	    283	    105	    203
+# PB2002 Plates
+AegeanSea	    AS	    1722	99	    -4	    2210	104	    1842
+Altiplano	    AP	    1678	52	    -64 	2240	162	    1827
+Anatolia	    AT	    1721	100	    -3	    2209	105	    1840
+BalmoralReef	BR	    1583	31	    -4	    1783	8	    1611
+BandaSea	    BS	    1777	-246	40	    2748	135	    1876
+BirdsHead	    BH	    6008	-54	    88	    6224	-56	    6110
+Burma	        BU	    1776	-243	40  	2750	136	    1877
+Caroline	    CL	    2489	-967	-579	2890	645	    1994
+ConwayReef	    CR	    1698	-45	    88  	1911	-56 	1807
+Easter	        EA	    4349	307	    -117	5751	-428	4544
+Futuna	        FT	    1698	-45	    88	    1912	-56 	1808
+Galapagos	    GP	    1685	305	    -117	3084	-430	1879
+JuanFernandez	JZ	    5335	306	    -117	6736	-428	5530
+Kermadec	    KE	    1696	-45	    90	    1908	-56 	1805
+Manus	        MN	    2964	31	    -5	    3165	8	    2993
+Maoke	        MO	    1697	-45	    88	    1912	-56 	1808
+Mariana	        MA	    2493	-962	-579	2895	645 	2005
+MoluccaSea	    MS	    1778	-245	40	    2749	135	    1878
+NewHebrides	    NH	    1582	30	    -3	    1779	7	    1607
+Niuafoou	    NI	    3567	-45	    89	    3779	-56	    3675
+NorthAndes   	ND	    1677	52	    -63 	2241	160	    1825
+NorthBismarck	NB	    1582	30	    -5	    1782	8	    1609
+Okhotsk	        OK	    1678	17	    -46 	2282	93	    1824
+Okinawa	        ON	    1745	-125	40	    2090	53  	1905
+Panama	        PM	    1788	-82	    -11 	2841	61  	1936
+Shetland	    SL	    1640	132	    0   	2094	10  	1708
+SolomonSea	    SS	    1698	-45	    88  	1912	-56 	1807
+SouthBismarck	SB	    6528	26	    -4  	6724	7   	6548
+Timor	        TI	    2612	-245	40	    3583	135 	2712
+Tonga	        TO	    7857	-44	    92  	8062	-55 	7959
+Woodlark	    WL	    1697	-47	    88  	1910	-56 	1805
