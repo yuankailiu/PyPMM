@@ -15,9 +15,13 @@
 import numpy as np
 from skimage.transform import resize
 
-from euler_pole import ITRF2014_PMM, EulerPole
+# pypmm modules
+from pypmm.euler_pole import EulerPole
+from pypmm.models import (ITRF2014_PMM,
+                          ITRF2020_PMM,
+                          )
 
-# original mintpy dependency
+# mintpy dependency
 from mintpy.diff import diff_file
 from mintpy.objects.resample import resample
 from mintpy.utils import readfile, utils as ut, writefile

@@ -1,21 +1,25 @@
-"""Euler Pole class definition and utility functions."""
-############################################################
-# Program is part of MintPy                                #
-# Copyright (c) 2013, Zhang Yunjun, Heresh Fattahi         #
-# Author: Yuan-Kai Liu, Oct 2022                           #
-############################################################
-# Recommend import:
-#     from mintpy.objects.euler_pole import EulerPole
-#
-# Reference:
-#  Pichon, X. L., Francheteau, J. & Bonnin, J. Plate Tectonics; Developments in Geotectonics 6;
-#    Hardcover – January 1, 1973. Page 28-29
-#  Cox, A., and Hart, R.B. (1986) Plate tectonics: How it works. Blackwell Scientific Publications,
-#    Palo Alto. DOI: 10.4236/ojapps.2015.54016. Page 145-156.
-#  Navipedia, Transformations between ECEF and ENU coordinates. [Online].
-#    https://gssc.esa.int/navipedia/index.php/Transformations_between_ECEF_and_ENU_coordinates
-#  Goudarzi, M. A., Cocard, M. & Santerre, R. (2014), EPC: Matlab software to estimate Euler
-#    pole parameters, GPS Solutions, 18, 153-162, doi: 10.1007/s10291-013-0354-4
+""" ---------------
+    a PyPMM module
+    ---------------
+
+    This module contains a PyPMM Euler Pole class definition
+    It needs constants & functions in pypmm.models and pypmm.utils.
+
+    recommend usage:
+        from pypmm.euler_pole import EulerPole
+
+    Reference:
+     Pichon, X. L., Francheteau, J. & Bonnin, J. Plate Tectonics; Developments in Geotectonics 6;
+       Hardcover - January 1, 1973. Page 28-29
+     Cox, A., and Hart, R.B. (1986) Plate tectonics: How it works. Blackwell Scientific Publications,
+       Palo Alto. DOI: 10.4236/ojapps.2015.54016. Page 145-156.
+     Navipedia, Transformations between ECEF and ENU coordinates. [Online].
+       https://gssc.esa.int/navipedia/index.php/Transformations_between_ECEF_and_ENU_coordinates
+     Goudarzi, M. A., Cocard, M. & Santerre, R. (2014), EPC: Matlab software to estimate Euler
+       pole parameters, GPS Solutions, 18, 153-162, doi: 10.1007/s10291-013-0354-4
+
+    author: Yuan-Kai Liu  Oct, 2022
+"""
 
 import collections
 import os
@@ -24,15 +28,16 @@ import numpy as np
 import pyproj
 from shapely import geometry
 
+# models & global constants
 from pypmm.models import (ITRF2014_PMM,
                           ITRF2020_PMM,
+                          EARTH_RADIUS_A,
+                          EARTH_RADIUS_MEAN,
+                          EARTH_ECCENT,
+                          MAS2RAD, MASY2DMY,
                           )
-
-
-# global variables
-EARTH_RADIUS = 6371.0088e3         # the arithmetic mean radius in meters
-MAS2RAD = np.pi / 3600000 / 180    # 1 mas (milli arc second) = x radian
-MASY2DMY = 1e6 / 3600000           # 1 mas per year = x degree per million year
+# pypmm tools
+from pypmm import utils as ut
 
 
 ####################################  EulerPole class begin  #############################################
@@ -120,11 +125,13 @@ class EulerPole:
         # calculate Euler vector and pole
         if all([wx, wy, wz]):
             # calc Euler pole from vector
-            pole_lat, pole_lon, rot_rate = cart2sph(wx, wy, wz)
+            #pole_lat, pole_lon, rot_rate = cart2sph(wx, wy, wz)
+            pole_lat, pole_lon, rot_rate = ut.T_xyz2llr(wx, wy, wz, e=0)
 
         elif all([pole_lat, pole_lon, rot_rate]):
             # calc Euler vector from pole
-            wx, wy, wz = sph2cart(pole_lat, pole_lon, r=rot_rate)
+            #wx, wy, wz = sph2cart(pole_lat, pole_lon, r=rot_rate)
+            wx, wy, wz = ut.T_llr2xyz(pole_lat, pole_lon, R=rot_rate, e=0)
 
         else:
             raise ValueError(f'Incomplete Euler Pole input!\n{EXAMPLE}')
@@ -318,16 +325,16 @@ class EulerPole:
         #             lon   [ rad^2     rad^2       rad^2/yr   ]
         #            rate   [ rad^2/yr  rad^2/yr    rad^2/yr^2 ]]
         if xyz_cov is not None: # 1. propagate from cartesian cov
-            sph_cov_rad = cart2sph_err(self.wx*MAS2RAD,    #  rad/yr
-                                       self.wy*MAS2RAD,    #  rad/yr
-                                       self.wz*MAS2RAD,    #  rad/yr
-                                       xyz_cov)            # (rad/yr) ^2
+            sph_cov_rad = ut.R_xyz2llr_err(self.wx*MAS2RAD,    #  rad/yr
+                                           self.wy*MAS2RAD,    #  rad/yr
+                                           self.wz*MAS2RAD,    #  rad/yr
+                                           xyz_cov)            # (rad/yr) ^2
         else: # 2. assume diagonal from user input
             sph_cov_rad = np.diag(sph_std**2)
-            xyz_cov     = sph2cart_err(self.wx*MAS2RAD,    #  rad/yr
-                                       self.wy*MAS2RAD,    #  rad/yr
-                                       self.wz*MAS2RAD,    #  rad/yr
-                                       sph_cov_rad)
+            xyz_cov     = ut.R_llr2xyz_err(self.wx*MAS2RAD,    #  rad/yr
+                                           self.wy*MAS2RAD,    #  rad/yr
+                                           self.wz*MAS2RAD,    #  rad/yr
+                                           sph_cov_rad)
             xyz_std     = np.diag(xyz_cov)**0.5         # rad/year
             xyz_mas_std = xyz_std/MAS2RAD               # mas/year
             xyz_deg_std = np.rad2deg(xyz_std*1e6)       # deg/Ma
@@ -342,7 +349,7 @@ class EulerPole:
         # sigma in spherical space
         sph_lat_std = (sph_cov_deg[0,0]**0.5)            # deg
         sph_lon_std = (sph_cov_deg[1,1]**0.5)            # deg
-        sph_mas_std = (sph_cov_deg[2,2]**0.5) / MAS2RAD  # mas/year
+        sph_mas_std = (sph_cov_rad[2,2]**0.5) / MAS2RAD  # mas/year
         sph_deg_std = (sph_cov_deg[2,2]**0.5)*1e6        # deg/Ma
 
         # return output
@@ -433,12 +440,18 @@ class EulerPole:
         # calculator, which also uses the WGS84 ellipsoid.
         if ellps:
             if print_msg:
-                print('assume a spheroidal Earth as defined in WGS84')
-            x, y, z = coord_llh2xyz(lat, lon, alt)
+                print(f'assume a spheroidal Earth as defined in WGS84')
+                print(f'         semi-major radius : {EARTH_RADIUS_A} m')
+                print(f'              eccentricity : {EARTH_ECCENT}')
+            #x, y, z = coord_llh2xyz(lat, lon, alt)
+            x, y, z = ut.T_llr2xyz(lat, lon, h=alt, R=EARTH_RADIUS_A)
+
         else:
             if print_msg:
-                print(f'assume a spherical Earth with radius={EARTH_RADIUS} m')
-            x, y, z = sph2cart(lat, lon, alt+EARTH_RADIUS)
+                print(f'assume a perfect spherical Earth')
+                print(f'  arithmetic mean radius : {EARTH_RADIUS_MEAN} m')
+            #x, y, z = sph2cart(lat, lon, alt+EARTH_RADIUS_MEAN)
+            x, y, z = ut.T_llr2xyz(lat, lon, h=alt, R=EARTH_RADIUS_MEAN, e=0)
 
         # ensure matrix is flattened
         if poi_shape is not None:
@@ -465,7 +478,7 @@ class EulerPole:
 
         # Helmert transform vxyz to another NNR system
         if helmert:
-            vx, vy, vz = helmert_transform(x, y, z, vx, vy, vz, helmert)
+            vx, vy, vz = ut.helmert_transform(x, y, z, vx, vy, vz, helmert)
 
         # reshape to the original shape of lat/lon
         if poi_shape is not None:
@@ -491,8 +504,7 @@ class EulerPole:
         vx, vy, vz = self.get_velocity_xyz(lat, lon, alt=alt, ellps=ellps, orb=orb, helmert=helmert, print_msg=print_msg)
 
         # convert ECEF to ENU velocity via matrix rotation: V_enu = T * V_xyz
-        ve, vn, vu = transform_xyz_enu(lat, lon, x=vx, y=vy, z=vz)
-
+        ve, vn, vu = ut.T_xyz2enu(lat, lon, xyz=(vx,vy,vz))
         # enforce zero vertical velocitpy when ellps=False
         # to avoid artifacts due to numerical precision
         if not ellps:
@@ -502,214 +514,3 @@ class EulerPole:
                 vu = 0
 
         return ve, vn, vu
-
-####################################  EulerPole class end  ###############################################
-
-
-####################################  Utility functions  #################################################
-# Utility functions for the math/geometry operations of Euler Pole and linear velocity
-# Reference:
-#   1. Euler pole forward formulation:
-#       + https://yuankailiu.github.io/assets/docs/Euler_pole_doc.pdf
-#         (need a proper reference here...)
-#   2. Uncertainty propagation: from cartesian pole (w_x, w_y, w_z) to spherical pole (lat, lon, rate)
-#       + https://github.com/tobiscode/disstans
-#       + Goudarzi, M. A., Cocard, M., & Santerre, R. (2014),*EPC: Matlab software to estimate Euler pole parameters*,GPS Solutions, 18(1), 153–162,
-#         doi:`10.1007/s10291-013-0354-4 <https://doi.org/10.1007/s10291-013-0354-4
-
-def cart2sph_err(w_x, w_y, w_z, cartesian_covariance):
-    """
-    Adapted from disstans/disstans/tools.py (https://github.com/tobiscode/disstans/blob/656c8be6d3d948f66fe091c7e3982e85ee6604cb/disstans/tools.py#L1688)
-    Reference: Goudarzi et al., 2014, equation 18
-    """
-    w_xy_mag = np.linalg.norm(np.array([w_x, w_y]))
-    w_mag    = np.linalg.norm(np.array([w_x, w_y, w_z]))
-    jac = np.array([
-                    [-w_x*w_z / (w_xy_mag * w_mag**2), -w_y*w_z / (w_xy_mag * w_mag**2), -w_xy_mag / w_mag**2], # Latitude
-                    [-w_y / w_xy_mag**2              ,  w_x / w_xy_mag**2              ,  0                  ], # Longitude
-                    [ w_x / w_mag                    ,  w_y / w_mag                    ,  w_z / w_mag        ]  # Rotation rate
-                    ])
-    spherical_covariance = jac @ cartesian_covariance @ jac.T
-    return spherical_covariance
-
-
-def sph2cart_err(w_x, w_y, w_z, spherical_covariance):
-    """
-    Inverse of the previous function
-    """
-    w_xy_mag = np.linalg.norm(np.array([w_x, w_y]))
-    w_mag    = np.linalg.norm(np.array([w_x, w_y, w_z]))
-    jac = np.array([
-                    [-w_x*w_z / (w_xy_mag * w_mag**2), -w_y*w_z / (w_xy_mag * w_mag**2), -w_xy_mag / w_mag**2], # Latitude
-                    [-w_y / w_xy_mag**2              ,  w_x / w_xy_mag**2              ,  0                  ], # Longitude
-                    [ w_x / w_mag                    ,  w_y / w_mag                    ,  w_z / w_mag        ]  # Rotation rate
-                    ])
-    cartesian_covariance = np.linalg.inv(jac) @ spherical_covariance @ np.linalg.inv(jac.T)
-    return cartesian_covariance
-
-
-def cart2sph(rx, ry, rz):
-    """Convert cartesian coordinates to spherical.
-
-    Parameters: rx/y/z  - float / np.ndarray, angular distance in X/Y/Z direction [any units of distance]
-    Returns:    lat/lon - float / np.ndarray, latitude / longitude  [degree]
-                r       - float / np.ndarray, radius [same unit as rx/y/z]
-    Examples:
-        # convert xyz coord to spherical coord
-        lat, lon, r = cart2sph(x, y, z)
-        # convert Euler vector (in cartesian) to Euler pole (in spherical)
-        pole_lat, pole_lon, rot_rate = cart2sph(wx, wy, wz)
-    """
-    r = np.sqrt(rx**2 + ry**2 + rz**2)
-    lat = np.rad2deg(np.arcsin(rz / r))
-    lon = np.rad2deg(np.arctan2(ry, rx))
-    return lat, lon, r
-
-
-def sph2cart(lat, lon, r=1):
-    """Convert spherical coordinates to cartesian.
-
-    Parameters: lat/lon - float / np.ndarray, latitude / longitude [degree]
-                r       - float / np.ndarray, radius [any units of angular distance]
-    Returns:    rx/y/z  - float / np.ndarray, angular distance in X/Y/Z direction [same unit as r]
-    Examples:
-        # convert spherical coord to xyz coord
-        x, y, z = sph2cart(lat, lon, r=radius)
-        # convert Euler pole (in spherical) to Euler vector (in cartesian)
-        wx, wy, wz = sph2cart(pole_lat, pole_lon, r=rot_rate)
-    """
-    rx = r * np.cos(np.deg2rad(lat)) * np.cos(np.deg2rad(lon))
-    ry = r * np.cos(np.deg2rad(lat)) * np.sin(np.deg2rad(lon))
-    rz = r * np.sin(np.deg2rad(lat))
-    return rx, ry, rz
-
-
-def coord_llh2xyz(lat, lon, alt):
-    """Convert coordinates from WGS84 lat/long/hgt to ECEF x/y/z.
-
-    Parameters: lat   - float / list(float) / np.ndarray, latitude  [degree]
-                lon   - float / list(float) / np.ndarray, longitude [degree]
-                alt   - float / list(float) / np.ndarray, altitude  [meter]
-    Returns:    x/y/z - float / list(float) / np.ndarray, ECEF coordinate [meter]
-    """
-    # ensure same type between alt and lat/lon
-    if isinstance(lat, np.ndarray) and not isinstance(alt, np.ndarray):
-        alt *= np.ones_like(lat)
-    elif isinstance(lat, list) and not isinstance(alt, list):
-        alt = [alt] * len(lat)
-
-    # construct pyproj transform object
-    transformer = pyproj.Transformer.from_crs(
-        {"proj":'latlong', "ellps":'WGS84', "datum":'WGS84'},
-        {"proj":'geocent', "ellps":'WGS84', "datum":'WGS84'},
-    )
-
-    # apply coordinate transformation
-    x, y, z = transformer.transform(lon, lat, alt, radians=False)
-
-    return x, y, z
-
-
-def transform_xyz_enu(lat, lon, x=None, y=None, z=None, e=None, n=None, u=None):
-    """Transform between ECEF (global xyz) and ENU at given locations (lat, lon) via matrix rotation.
-
-    Reference:
-        Navipedia, https://gssc.esa.int/navipedia/index.php/Transformations_between_ECEF_and_ENU_coordinates
-        Cox, A., and Hart, R.B. (1986) Plate tectonics: How it works. Blackwell Scientific Publications,
-          Palo Alto, doi: 10.4236/ojapps.2015.54016. Page 145-156
-
-    Parameters: lat/lon - float / np.ndarray, latitude/longitude      at location(s) [degree]
-                x/y/z   - float / np.ndarray, x/y/z         component at location(s) [e.g., length, velocity]
-                e/n/u   - float / np.ndarray, east/north/up component at location(s) [e.g., length, velocity]
-    Returns:    e/n/u if given x/y/z
-                x/y/z if given e/n/u
-    """
-    # convert the unit from degree to radian
-    lat = np.deg2rad(lat)
-    lon = np.deg2rad(lon)
-
-    # transformation via matrix rotation:
-    #     V_enu = T * V_xyz
-    #     V_xyz = T^-1 * V_enu
-    #
-    # Equilevant 3D matrix code is as below:
-    #     V_enu = np.diagonal(
-    #         np.matmul(
-    #             T.reshape([-1,3]),
-    #             V_xyz.T,
-    #         ).reshape([3, npts, npts], order='F'),
-    #         axis1=1,
-    #         axis2=2,
-    #     ).T
-    # To avoid this complex matrix operation above, we calculate for each element as below:
-
-    if all(i is not None for i in [x, y, z]):
-        # cart2enu
-        e = - np.sin(lon) * x \
-            + np.cos(lon) * y
-        n = - np.sin(lat) * np.cos(lon) * x \
-            - np.sin(lat) * np.sin(lon) * y \
-            + np.cos(lat) * z
-        u =   np.cos(lat) * np.cos(lon) * x \
-            + np.cos(lat) * np.sin(lon) * y \
-            + np.sin(lat) * z
-        return e, n, u
-
-    elif all(i is not None for i in [e, n, u]):
-        # enu2cart
-        x = - np.sin(lon) * e \
-            - np.cos(lon) * np.sin(lat) * n \
-            + np.cos(lon) * np.cos(lat) * u
-        y =   np.cos(lon) * e \
-            - np.sin(lon) * np.sin(lat) * n \
-            + np.sin(lon) * np.cos(lat) * u
-        z =   np.cos(lat) * n \
-            + np.sin(lat) * u
-        return x, y, z
-
-    else:
-        raise ValueError('Input (x,y,z) or (e,n,u) is NOT complete!')
-
-
-def helmert_transform(x, y, z, vx, vy, vz, helmert):
-    """Helmert transformation with full 7 params and their rates = 14 params
-    reference: http://geoweb.mit.edu/gg/courses/201706_UNAVCO/pdf/21-ref_frames.pdf (slide no.: 13)
-    ITRF params URL: https://itrf.ign.fr/en/solutions/transformations
-    INPUT
-        x, y, z     : 1d array locations
-        vx, vy, vz  : 1d array before transformation
-        helmert     : a dictionary with full 14 params (translation + scale + rotation and all their rates)
-    OUTPUT
-        vx, vy, vz  : 1d array after transformation
-    """
-    T1, dT1 = helmert['T1'] * 1e-3, helmert['dT1'] * 1e-3 # translation & rate in x-axis      [m]   [m/yr]
-    T2, dT2 = helmert['T2'] * 1e-3, helmert['dT2'] * 1e-3 # translation & rate in y-axis      [m]   [m/yr]
-    T3, dT3 = helmert['T3'] * 1e-3, helmert['dT3'] * 1e-3 # translation & rate in z-axis      [m]   [m/yr]
-    R1, dR1 = helmert['R1'] * MAS2RAD, helmert['dR1'] * MAS2RAD # rotation & rate in x-axis [rad] [rad/yr]
-    R2, dR2 = helmert['R2'] * MAS2RAD, helmert['dR2'] * MAS2RAD # rotation & rate in y-axis [rad] [rad/yr]
-    R3, dR3 = helmert['R3'] * MAS2RAD, helmert['dR3'] * MAS2RAD # rotation & rate in z-axis [rad] [rad/yr]
-    D ,  dD = helmert['D'] * 1e-9 , helmert['dD'] * 1e-9  # dilatation (scale)              [-]   [-/yr]
-
-    # position matrix
-    pxyz = np.stack([x, y, z])
-
-    # velocity matrix
-    vxyz = np.stack([vx, vy, vz])
-
-    # translation vector
-    dT = np.array([dT1, dT2, dT3]).reshape(3,1)
-
-    # Helmert matrix
-    A = np.array([[  D,   -R3,    R2],
-                  [ R3,     D,   -R1],
-                  [-R2,    R1,     D]])
-
-    # Helmert derivitives
-    B = np.array([[  dD,   -dR3,    dR2],
-                  [ dR3,     dD,   -dR1],
-                  [-dR2,    dR1,     dD]])
-
-    # apply the full transformation
-    vxyz_trans = vxyz + dT + (A @ vxyz) + (B @ pxyz)
-
-    return vxyz_trans[0,:], vxyz_trans[1,:], vxyz_trans[2,:]

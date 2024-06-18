@@ -1,19 +1,55 @@
+""" ---------------
+    a PyPMM module
+    ---------------
+
+    This module contains functions that are not dependent on
+    any of PyPMM's classes. Simply defining some constants, numbers, etc.
+
+    recommend usage:
+        from pypmm.models import ...
+
+    author: Yuan-Kai Liu  2022-2024
+"""
+
+
 import os
 import collections
+import numpy as np
 
 import pypmm
 
 
-#################################  Plate boundary files  #######################################
+# ***************  Earth's constants  **************
+    # Earth radius in WGS84 (defined by IUGG)
+    # equatorial radius: a = 6378.1370e3
+    # polar      radius: b = 6356.7523e3
+EARTH_RADIUS_A = 6378137.0      # semi-major axis : a
+EARTH_RADIUS_B = 6356752.3      # semi-minor axis : b
+
+    # arithmetic mean radius: R_1 = (2 * a + b) / 3 = 6371.0088e3
+EARTH_RADIUS_MEAN = (2*EARTH_RADIUS_A + EARTH_RADIUS_B) / 3
+
+    # earth's flattening factor, f; 1/f ~= 298.257223563
+EARTH_FLATTEN = 1 - EARTH_RADIUS_B/EARTH_RADIUS_A
+
+    # Earth eccentricity : e^2 = (a^2 - b^2) / a^2
+    #                          =  2f - f^2 = 0.00669438003
+EARTH_ECCENT = (2*EARTH_FLATTEN - EARTH_FLATTEN**2)**0.5
+
+
+# ************  Unit conversion  ***********
+MAS2RAD  = np.pi / 3600000 / 180    # 1 mas (milli arc second) = x radian
+MASY2DMY = 1e6 / 3600000            # 1 mas per year = x degree per million year
+
+
+# ********  Plate boundary files  **********
 PLATE_BOUNDARY_FILE = {
     'GSRM'   : os.path.join(pypmm.__path__[0], 'plate_boundary/GSRM/plate_outlines.lola'),
     'MORVEL' : os.path.join(pypmm.__path__[0], 'plate_boundary/MORVEL/plate_outlines.lalo'),
     'PB2002' : os.path.join(pypmm.__path__[0], 'plate_boundary/PB2002/PB2002_plates.dig.lola'),
 }
 
-#################################  Plate Motion Models  ########################################
-# Later will be moved to a separate script `pmm.py` in plate motion package
-
+# **********  Plate Motion Models  **********
 # 1). ITRF Plate Motion Model
 # Reference frame: ITRF2014 (Altamimi et al., 2017)
 Tag = collections.namedtuple('Tag', 'Abbrev num_site omega_x omega_y omega_z omega \
@@ -195,3 +231,38 @@ NNR_MORVEL56_PMM = {
     'Tonga'           : Tag('TO'  , 25.87   , 4.48      , 8.942),
     'Woodlark'        : Tag('WL'  , 0.10    , 128.52    , 1.744),
 }
+
+
+# **************  other literatures ***************
+#   some regional published poles
+#
+# --- Sinai ---
+#  Latitude [deg]     Longitude [deg]      Rate [deg/Ma]        Reference                     Frame
+# N 54.7  ± 0.7     E 347.8  ±  4.0     Ω = 0.417  ± 0.021      Castro-Perdomo et al., 2022   ITRF2014
+# N 57.98 ± 0.31    E 334.89 ± 26.59    Ω = 0.3588 ± 0.1042     Wdowinski et al. 2004         ITRF2000
+# N 53.52 ± 0.15    E 359.09 ± 16.85    Ω = 0.477  ± 0.56       Le Beón et al. 2008           ITRF2000
+# N 54.23 ± 0.17    E 352.19 ±  9.31    Ω = 0.438  ± 0.066      SOPAC                         ITRF2000
+# N 56.64 ± 0.21    E 330.84 ± 10.26    Ω = 0.35   ± 0.029      Sadeh et al. 2012             ITRF2005
+# N 55.8  ± 1.5     E 342.3  ±  8.1     Ω = 0.397  ± 0.06       Hamiel & Piatibratova 2019    ITRF2008
+# N 54.7  ± 0.7     E 347.8  ±  4.0     Ω = 0.417  ± 0.021      Castro-Perdomo et al., 2022   ITRF2014
+
+# example usage:
+#   A. < compute the plate motion prediction in LOS >
+#
+#   omega_sph=(54.7, -12.2, 0.417)   # Castro-Perdomo
+#   calc_plate_motion(geom_file, omega_sph=omega_sph)
+#
+#   B. < build a pole class with uncertainty >
+#
+#   pole_sinai = EulerPole(name     = 'Sinai_Castro-Perdomo' ,
+#                          pole_lat =  54.7                  ,
+#                          pole_lon = -12.2                  ,
+#                          rot_rate =   0.417                ,
+#                          unit     = 'deg/Ma')
+#
+#   pole_sinai.get_uncertainty(in_err={'sph_lat_std': 0.7,
+#                                      'sph_lon_std': 4.0,
+#                                      'sph_deg_std': 0.021
+#                                      },
+#                              src='in_err')
+# *************************************************

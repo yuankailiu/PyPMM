@@ -1,3 +1,17 @@
+""" ---------------
+    a PyPMM module
+    ---------------
+
+    This module contains functions that are not dependent on
+    any of PyPMM's classes. But it needs constants from pypmm.models.
+
+    recommend usage:
+        from pypmm.plot_utils import ...
+
+    author: Yuan-Kai Liu  2022-2024
+"""
+
+
 import os
 import numpy as np
 from shapely import geometry
@@ -12,15 +26,66 @@ from cartopy import crs as ccrs, feature as cfeature
 from pypmm.models import (GSRM_NNR_V2_1_PMM,
                           NNR_MORVEL56_PMM,
                           PLATE_BOUNDARY_FILE,
+                          MAS2RAD,
+                          MASY2DMY,
                           )
-from pypmm.euler_pole import (EARTH_RADIUS,
-                              MAS2RAD,
-                              MASY2DMY,
-                              )
 
 ###############  basic general plotting  ###################
+def text_accomodating_xylim(fig, ax):
+    # Update limits to ensure all text is within the plot area
+    fig.canvas.draw()  # Draw the canvas to update text positions
 
-def discrete_cmap(N, cmap='viridis'):
+    x_min, x_max = ax.get_xlim()
+    y_min, y_max = ax.get_ylim()
+
+    for child in ax.get_children():
+        if isinstance(child, plt.Text):
+            bbox = child.get_window_extent(renderer=fig.canvas.get_renderer())
+            bbox_data_coords = bbox.transformed(ax.transData.inverted())
+            x_min = min(x_min, bbox_data_coords.xmin)
+            x_max = max(x_max, bbox_data_coords.xmax)
+            y_min = min(y_min, bbox_data_coords.ymin)
+            y_max = max(y_max, bbox_data_coords.ymax)
+
+    # Apply the new limits with a small margin
+    x_margin = (x_max - x_min) * 0.05
+    y_margin = (y_max - y_min) * 0.01
+    ax.set_xlim(x_min-x_margin, x_max+x_margin)
+    ax.set_ylim(y_min-y_margin, y_max+y_margin)
+
+
+def update_handles(legend, ms=30, ec='k', lw=1, alpha=1.0):
+    for ha in legend.legend_handles:
+        ha.set_sizes([ms])
+        ha.set_edgecolor(ec)
+        ha.set_linewidth(lw)
+        ha.set_alpha(alpha)
+
+
+def lighten_color(color, amount=0.5):
+    """
+    url: https://stackoverflow.com/questions/37765197/darken-or-lighten-a-color-in-matplotlib
+    Lightens the given color by multiplying (1-luminosity) by the given amount.
+    Input can be matplotlib color string, hex string, or RGB tuple.
+
+    Examples:
+    >> lighten_color('g', 0.3)
+    >> lighten_color('#F034A3', 0.6)
+    >> lighten_color((.3,.55,.1), 0.5)
+    """
+    import matplotlib.colors as mc
+    import colorsys
+    try:
+        c = mc.cnames[color]
+    except:
+        c = color
+    c = colorsys.rgb_to_hls(*mc.to_rgb(c))
+    return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
+
+
+def discrete_cmap( N    : int,
+                   cmap : str | None = 'viridis',
+                   )   -> list:
     """Create an N-bin discrete colormap from the specified input map
     REFERECE: https://gist.github.com/jakevdp/91077b0cae40f8f8244a#file-discrete_cmap-py-L8
     """
@@ -32,8 +97,18 @@ def discrete_cmap(N, cmap='viridis'):
 
 
 # better image show
-def plot_imshow(ax, data, vlim=[None,None], cmap='RdBu_r', title=None, label='mm/yr', intp='nearest',
-                cbar=True, shrink=0.5, aspect=None, axon='off'):
+def plot_imshow( ax     : matplotlib.axes.Axes,
+                 data   : np.ndarray,
+                 vlim   : tuple | None = [None,None],
+                 cmap   : str   | None = 'RdBu_r',
+                 title  : str   | None = None,
+                 label  : str   | None = 'mm/yr',
+                 intp   : str   | None = 'nearest',
+                 cbar   : bool  | None = True,
+                 shrink : float | None = 0.5,
+                 aspect : str   | None = None,
+                 axon   : str   | None = 'off'
+                 )     -> tuple :
     vmin, vmax = vlim
     im = ax.imshow(data, vmin=vmin, vmax=vmax, cmap=cmap, interpolation=intp, aspect=aspect)
     bound = np.argwhere(~np.isnan(data))
@@ -50,7 +125,16 @@ def plot_imshow(ax, data, vlim=[None,None], cmap='RdBu_r', title=None, label='mm
 
 
 # visualize the error ellipse (pole & covariance)
-def confidence_ellipse(ax, x=None, y=None, cov=None, n_std=2., facecolor='none', print_msg=False, **kwargs):
+def confidence_ellipse( ax        : matplotlib.axes.Axes,
+                        x         : np.ndarray | None = None,
+                        y         : np.ndarray | None = None,
+                        cov       : np.ndarray | None = None,
+                        n_std     : float      | None = 2.,
+                        facecolor : str        | None = 'none',
+                        from_data : bool       | None = False,
+                        print_msg : bool       | None = False,
+                        **kwargs,
+                        ):
     """Create a plot of the covariance confidence ellipse of *x* and *y*.
     https://matplotlib.org/stable/gallery/statistics/confidence_ellipse.html
 
@@ -64,6 +148,15 @@ def confidence_ellipse(ax, x=None, y=None, cov=None, n_std=2., facecolor='none',
 
     n_std : float
         The number of standard deviations to determine the ellipse's radiuses.
+
+    facecolor : str
+        face color of the ellipse
+
+    from_data : bool
+        whether to estimate the covariance directly from input data x, y
+
+    print_msg : bool
+        whether to print message
 
     **kwargs
         Forwarded to `~matplotlib.patches.Ellipse`
@@ -87,6 +180,18 @@ def confidence_ellipse(ax, x=None, y=None, cov=None, n_std=2., facecolor='none',
             elps.set_transform(transf + ax.transData)
         return elps
 
+
+    # covariance from data x, y
+    if from_data:
+        if x.size != y.size:
+            raise ValueError("x and y must be the same size")
+        else:
+            cov = np.cov(x, y)
+
+    # mean of data
+    mean_x = np.nanmean(x)
+    mean_y = np.nanmean(y)
+
     # plot the error ellipse
     if cov is not None:
         pearson = cov[0, 1]/np.sqrt(cov[0, 0] * cov[1, 1])
@@ -102,7 +207,7 @@ def confidence_ellipse(ax, x=None, y=None, cov=None, n_std=2., facecolor='none',
         scale_y = np.sqrt(cov[1, 1]) * n_std
 
         # define a affine transf: rotate, scale, then translate
-        transf = transforms.Affine2D().rotate_deg(45).scale(scale_x, scale_y).translate(x, y)
+        transf = transforms.Affine2D().rotate_deg(45).scale(scale_x, scale_y).translate(mean_x, mean_y)
 
         # apply the affine transform and then the map coordinate transform
         ellipse = _transf_ellipse(ax, ellipse, transf)
@@ -123,23 +228,32 @@ def confidence_ellipse(ax, x=None, y=None, cov=None, n_std=2., facecolor='none',
 
         # plot the pole location
         if hasattr(ax, 'projection'):
-            ax.scatter(x, y, s=10, marker='o', fc='white', ec=ec, transform=ccrs.PlateCarree())
+            ax.scatter(mean_x, mean_y, s=10, marker='o', fc='white', ec=ec, transform=ccrs.PlateCarree())
         else:
-            ax.scatter(x, y, s=10, marker='o', fc='white', ec=ec)
+            ax.scatter(mean_x, mean_y, s=10, marker='o', fc='white', ec=ec)
 
     else:
         # plot the pole location, show legend
         kwargs['alpha'] = 1
         if hasattr(ax, 'projection'):
-            ax.scatter(x, y, s=10, marker='o', fc='white', transform=ccrs.PlateCarree(), **kwargs)
+            ax.scatter(mean_x, mean_y, s=10, marker='o', fc='white', transform=ccrs.PlateCarree(), **kwargs)
         else:
-            ax.scatter(x, y, s=10, marker='o', fc='white', **kwargs)
+            ax.scatter(mean_x, mean_y, s=10, marker='o', fc='white', **kwargs)
     return
 
 
 ###############  block model plotting  ###################
 
-def plot_block_diff(block1, block2, plot_tks, u_fac=1e3, cmap='RdYlBu_r', clabel='mm/year', vlim=[-4,4], figsize=(10,6), fontsize=12):
+def plot_block_diff( block1   : object,
+                     block2   : object,
+                     plot_tks : list[str],
+                     u_fac    : float | None = 1e3,
+                     cmap     : str   | None = 'RdYlBu_r',
+                     clabel   : str   | None = 'mm/year',
+                     vlim     : list  | None = [-4,4],
+                     figsize  : tuple | None = (10,6),
+                     fontsize : float | None = 12,
+                     ) -> tuple :
     fig   = plt.figure(figsize=figsize)
     gspec = fig.add_gridspec(3*2, len(plot_tks)+1, width_ratios=[1]*len(plot_tks)+[0.06])
     axs   = []
@@ -171,7 +285,16 @@ def plot_block_diff(block1, block2, plot_tks, u_fac=1e3, cmap='RdYlBu_r', clabel
     return fig, axs
 
 
-def plot_pole_covariance(poles, names, colors, n_std=2, extent='auto', radius=20, axes=None, grids_on=True, **kwargs):
+def plot_pole_covariance( poles    : object,
+                          names    : list[str],
+                          colors   : list[str],
+                          n_std    : float | None = 2,
+                          extent   : str   | list | tuple | None = 'auto',
+                          radius   : float | None = 20,
+                          axes     : list[matplotlib.axes.Axes] | None = None,
+                          grids_on : bool  | None = True,
+                          **kwargs,
+                          ) -> tuple :
     """Provide the pole objects, plot the covariance in 3 subplots
         1. Lat vs Lon
         2. Lat vs rate
@@ -288,19 +411,11 @@ def plot_pole_covariance(poles, names, colors, n_std=2, extent='auto', radius=20
 # Utility for plotting the plate motion on a globe
 # check usage: https://github.com/yuankailiu/utils/blob/main/notebooks/PMM_plot.ipynb
 
-def update_projection(axs, axi, projection, fig=None):
-    """ https://stackoverflow.com/a/75485793
-    axs  : all subplot axes
-    axi  : current subplot axis
-    """
-    if fig is None: fig = plt.gcf()
-    rows, cols, start, stop = axi.get_subplotspec().get_geometry()
-    axs.flat[start].remove()
-    axs.flat[start] = fig.add_subplot(rows, cols, start+1, projection=projection)
-    return fig, axs.flat[start]
-
-
-def read_plate_outline(pmm_name='GSRM', plate_name=None, order='lalo', print_msg=False):
+def read_plate_outline( pmm_name   : str  | None = 'GSRM',
+                        plate_name : str  | None = None,
+                        order      : str  | None = 'lalo',
+                        print_msg  : bool | None = False,
+                        ) -> object | dict :
     """Read the plate boundaries for the given plate motion model.
 
     Parameters: pmm_name   - str, plate motion (model) name
@@ -408,7 +523,11 @@ def read_plate_outline(pmm_name='GSRM', plate_name=None, order='lalo', print_msg
 
 
 ## Map extent for showing two or more poles together
-def find_extent(poles=None, radius=None, lons=None, lats=None):
+def find_extent( poles  : object     | None = None,
+                 radius : float      | None = None,
+                 lons   : np.ndarray | None = None,
+                 lats   : np.ndarray | None = None,
+                 ) -> tuple :
     if poles is not None:
         if not isinstance(poles, list): poles = [poles]
         lats, lons = [], []
@@ -431,13 +550,16 @@ def find_extent(poles=None, radius=None, lons=None, lats=None):
     return lon0, lat0, extent
 
 
-def extent2poly(extent):
+def extent2poly(extent: tuple) -> object:
     x1, x2, y1, y2 = extent
     poly = np.array([[y1,x1],[y1,x2],[y2,x2],[y2,x1]])
     return geometry.Polygon(poly)
 
 
-def sample_coords_within_polygon(polygon_obj, ny=10, nx=10):
+def sample_coords_within_polygon( polygon_obj : object,
+                                  ny : int | None = 10,
+                                  nx : int | None = 10,
+                                  ) -> tuple[np.ndarray] :
     """Make a set of points inside the defined sphericalpolygon object.
 
     Parameters: polygon_obj - shapely.geometry.Polygon, a polygon object in lat/lon.
@@ -467,7 +589,7 @@ def sample_coords_within_polygon(polygon_obj, ny=10, nx=10):
     return sample_lats, sample_lons
 
 
-def update_kwargs(kwargs):
+def update_kwargs(kwargs : dict) -> dict:
     # default plot settings
     kwargs['c_ocean']     = kwargs.get('c_ocean', 'w')
     kwargs['c_land']      = kwargs.get('c_land', 'lightgray')
@@ -493,9 +615,16 @@ def update_kwargs(kwargs):
     return kwargs
 
 
-def plot_basemap(plate_boundary, pole_lalo=None,
-                 map_style='globe', center_lalo=None, satellite_height=1e6, extent=None,
-                 ax=None, figsize=[5, 5], **kwargs):
+def plot_basemap( plate_boundary   : object,
+                  pole_lalo        : tuple                | None = None,
+                  map_style        : str                  | None = 'globe',
+                  center_lalo      : tuple                | None = None,
+                  satellite_height : float                | None = 1e6,
+                  extent           : list  | tuple        | None = None,
+                  ax               : matplotlib.axes.Axes | None = None,
+                  figsize          : list  | tuple        | None = [5, 5],
+                  **kwargs,
+                  ) -> tuple :
     """Plot the globe map wityh plate boundary, quivers on some points.
 
     Parameters: plate_boundary   - shapely.geometry.Polygon object
@@ -561,6 +690,8 @@ def plot_basemap(plate_boundary, pole_lalo=None,
 
         print(f'Map center at ({center_lalo[0]:.1f}N, {center_lalo[1]:.1f}E)')
         map_proj = ccrs.NearsidePerspective(center_lalo[1], center_lalo[0], satellite_height=satellite_height)
+        map_proj.threshold = map_proj.threshold/500.  # set finer threshold for line segment along the projection
+        #https://stackoverflow.com/questions/60685245/plot-fine-grained-geodesic-with-cartopy
         extent   = None
         extentPoly = plate_boundary
     elif map_style == 'platecarree':
@@ -627,11 +758,30 @@ def plot_basemap(plate_boundary, pole_lalo=None,
     return ax, polygon
 
 
-def plot_plate_motion(plate_boundary, epole_obj=None, orb=True, helmert=False,
-                        Ve=None, Vn=None, Lats=None, Lons=None,
-                        map_style='globe', center_lalo=None, satellite_height=1e6, extent=None,
-                        qscale=200, qunit=50, qwidth=.0075, qcolor='coral', qname=None, unit='mm',
-                        ax=None, figsize=[5, 5], **kwargs):
+def plot_plate_motion( plate_boundary   : object,
+                       map_style        : str                  | None = 'globe',
+                       center_lalo      : tuple                | None = None,
+                       satellite_height : float                | None = 1e6,
+                       extent           : list  | tuple        | None = None,
+                       ax               : matplotlib.axes.Axes | None = None,
+                       figsize          : list  | tuple        | None = [5, 5],
+                       epole_obj        : object               | None = None,
+                       orb              : bool                 | None = True,
+                       helmert          : dict                 | None = False,
+                       Ve               : list                 | None = None,
+                       Vn               : list                 | None = None,
+                       Lats             : list                 | None = None,
+                       Lons             : list                 | None = None,
+                       qscale           : float                | None = 200,
+                       qunit            : float                | None = 50,
+                       qwidth           : float                | None = .0075,
+                       qcolor           : list[str]   | str    | None = 'coral',
+                       qalpha           : list[float] | float  | None = 1.,
+                       qname            : list[str]   | str    | None = None,
+                       unit             : str                  | None = 'mm',
+                       **kwargs,
+                       ) -> tuple :
+
 
     kwargs = update_kwargs(kwargs)
 
@@ -645,6 +795,7 @@ def plot_plate_motion(plate_boundary, epole_obj=None, orb=True, helmert=False,
         if Ve is not None: N = len(Ve)
     if not isinstance(helmert, list): helmert = N * [helmert]
     if not isinstance(qcolor,  list): qcolor  = N * [qcolor]
+    if not isinstance(qalpha,  list): qalpha  = N * [qalpha]
     if not isinstance(qname,   list): qname   = N * [qname]
     if all(_inp is not None for _inp in (Lats, Lons)):
         if len(Lats) != N: Lats = N * [Lats]
@@ -659,14 +810,18 @@ def plot_plate_motion(plate_boundary, epole_obj=None, orb=True, helmert=False,
                                satellite_height=satellite_height, extent=extent, ax=ax, figsize=figsize, **kwargs)
 
 
-    if epole_obj:
+    if all(_inp is not None for _inp in (Ve, Vn, Lats, Lons)):
+        # VECTORS from : input Ve Vn lists
+        print('you gave me ve vn, plot from input vectors')
+
+    elif epole_obj is not None:
         # VECTORS from : input pole lists
         print('plot from poles')
         Lats = []
         Lons = []
         Ve   = []
         Vn   = []
-        for j, (epole, helm, qc) in enumerate(zip(epole_obj, helmert, qcolor)):
+        for j, (epole, helm) in enumerate(zip(epole_obj, helmert)):
             # select sample points inside the polygon
             _lats, _lons = sample_coords_within_polygon(polygon, ny=kwargs['qnum'], nx=kwargs['qnum'])
 
@@ -677,11 +832,9 @@ def plot_plate_motion(plate_boundary, epole_obj=None, orb=True, helmert=False,
             Vn.append(_vn)
             Lats.append(_lats)
             Lons.append(_lons)
-    else:
-        # VECTORS from : input Ve Vn lists
-        print('plot from input vectors')
 
-    for j, (ve, vn, lats, lons, qc) in enumerate(zip(Ve, Vn, Lats, Lons, qcolor)):
+
+    for j, (ve, vn, lats, lons, qc, qa) in enumerate(zip(Ve, Vn, Lats, Lons, qcolor, qalpha)):
         # scale the vector unit
         if   unit == 'mm':  ve = np.array(ve)*1e3; vn = np.array(vn)*1e3
         elif unit == 'cm':  ve = np.array(ve)*1e2; vn = np.array(vn)*1e2
@@ -695,7 +848,7 @@ def plot_plate_motion(plate_boundary, epole_obj=None, orb=True, helmert=False,
             vn /= renorm
 
         # ---------- plot inplate vectors --------------
-        q = ax.quiver(lons, lats, ve, vn, transform=ccrs.PlateCarree(), scale=qscale, width=qwidth, color=qc, angles="xy", zorder=3)
+        q = ax.quiver(lons, lats, ve, vn, transform=ccrs.PlateCarree(), scale=qscale, width=qwidth, color=qc, angles="xy", alpha=qa, zorder=3)
         if j==0:
             ax.quiverkey(q, X=0.1, Y=0.1, U=qunit, label=f'{qunit} {unit}/yr', labelpos='S', coordinates='axes', color='k', fontproperties={'size':kwargs['font_size']}, zorder=10)
 
