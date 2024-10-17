@@ -20,6 +20,8 @@ import scipy
 
 import pyproj
 
+import pickle
+
 # constants
 from pypmm.models import (EARTH_RADIUS_A,
                           EARTH_RADIUS_B,
@@ -27,6 +29,45 @@ from pypmm.models import (EARTH_RADIUS_A,
                           MAS2RAD, MASY2DMY,
                           )
 
+import decimal
+import time
+
+class Timer:
+    def __init__(self):
+        self.start_time = None
+        self.end_time = None
+
+    def start(self):
+        self.start_time = time.perf_counter()
+
+    def stop(self):
+        self.end_time = time.perf_counter()
+
+    def elapsed(self):
+        if self.start_time is None or self.end_time is None:
+            raise ValueError("Timer has not been started or stopped.")
+        return self.end_time - self.start_time
+
+    def readable_elapsed(self):
+        hours, rem = divmod(self.elapsed(), 3600)
+        minutes, seconds = divmod(rem, 60)
+        msg = f'Execution Time: {int(hours)} hours, {int(minutes)} minutes, {seconds:.4f} seconds'
+        return msg
+
+
+def round_precision(val, prec=3):
+    val = float(val)
+    with decimal.localcontext() as ctx:
+        ctx.prec = prec
+        out_val  = decimal.Decimal(val) * decimal.Decimal(1)
+        return float(out_val)
+
+def as_sci_fmt(x, ndp):
+    s = '{x:0.{ndp:d}e}'.format(x=x, ndp=ndp)
+    m, e = s.split('e')
+    if m.startswith('-'):
+        m = r'$-$' + m[1:]
+    return fr'{m:s}$\times$10$^{{{int(e):d}}}$'
 
 # **************************************************
 #                   linear alg
@@ -55,7 +96,7 @@ def is_PSD(matrix):
 
 def matrix_block_diagonal(*matrices):
     """
-    don't forget to use scipy
+    call scipy.linalg
     """
     return scipy.linalg.block_diag(*matrices)
 
@@ -98,7 +139,7 @@ def matrix_diagonalization(C):
     return L, D
 
 
-def matrix_diagonalization_blockwise(*As):
+def matrix_diagonalization_blockwise(*As, save=False, load=False, names=None):
     """
     diagonalize sevaral symmetric positive-definite matrix As (A1, A2, A3, ...)
     and get the diagonalized matrix D_block and eigenvector L_block
@@ -107,11 +148,32 @@ def matrix_diagonalization_blockwise(*As):
                                        [ 0  A2   0]
                                        [ 0   0  A3] ...
     """
+    if names is None:
+        names = [None] * len(As)
+
     # Diagonalize each As
     Ls, Ds = [], []
-    for i, _A in enumerate(As):
-        print(f' diagonalize matrix {i+1}, shape:{_A.shape} size:{_A.nbytes/(1024**2):.3f}MB')
-        _L, _D = matrix_diagonalization(_A)
+    for i, (_A, name) in enumerate(zip(As, names)):
+        if name is None:
+            name = str(i+1)
+        out_file = f'diagonalized_block_{name}.pkl'
+
+        if load and os.path.isfile(out_file):
+            print(f' read block D and L from {out_file}')
+            with open(out_file, 'rb') as fin:
+                in_dict = pickle.load(fin)
+            _L = in_dict['L']
+            _D = in_dict['D']
+            del in_dict
+
+        else:
+            print(f' diagonalize matrix {name}, shape: {_A.shape} size: {_A.nbytes/(1024**2):.2f} MB')
+            _L, _D = matrix_diagonalization(_A)
+
+            if save:
+                with open(out_file, 'wb') as fout:
+                    pickle.dump({'L': _L, 'D': _D}, fout)
+
         Ls.append(_L)
         Ds.append(_D)
         del _L, _D
@@ -234,8 +296,143 @@ def fullCov_LS(G, d, Cx=None):
     # Perform SVD
     singv = scipy.linalg.svdvals(G)
     cond = singv[0] / singv[-1]
+    rank = np.linalg.matrix_rank(G)
 
-    return mpost, Cm, m_std, e2, singv, cond
+    return mpost, Cm, m_std, e2, rank, singv, cond
+
+
+def fullCov_cuda_LS(G, d, Cx=None, gpu_device=0):
+    """least squares with a full covariance matrix
+
+    INPUTS:
+    G          - design matrix              ; (N, M)
+    d          - data array                 ; (N, 1)
+    Cx         - data uncorrelated error    ; (N, N)
+    """
+    import cuda
+
+    device    = cuda.manager.device(gpu_device)
+
+    precision = 'float32'
+    print(' pyre cuda matrix...')
+    gd  = cuda.matrix(source=d , dtype=precision)           ; print(f' cuda d matrix')
+    gG  = cuda.matrix(source=G , dtype=precision)           ; print(f' cuda G matrix')
+    gCi = cuda.matrix(source=Cx, dtype=precision).inverse() ; print(f' cuda Cx matrix')
+
+    print(f' cublas linalg: 1st term, Cm')
+    gCm  = cuda.cublas.gemm(cuda.cublas.gemm(gG, gCi, transa=1), gG).inverse()
+    print(f' cublas linalg: 2nd term')
+    gTwo = cuda.cublas.gemm(cuda.cublas.gemm(gG, gCi, transa=1), gd)
+    print(f' cublas linalg: m')
+    gm   = cuda.cublas.gemm(gCm, gTwo)
+
+    print(f' cuda copy to host')
+    Cm    = gCm.copy_to_host(type='numpy')
+    mpost = gm.copy_to_host(type='numpy')
+
+    m_std = np.sqrt(np.diag(Cm))
+
+    # 2_norm^2 residuals
+    resid = d - (G @ mpost)
+    e2    = np.sum(resid**2)
+
+    # perform SVD on G
+    singv = scipy.linalg.svdvals(G)
+    cond = singv[0] / singv[-1]
+    rank = np.linalg.matrix_rank(G)
+
+    return mpost, Cm, m_std, e2, rank, singv, cond
+
+
+def fullCov_cuda_LS_blockwise(G, d, Cs, gpu_device=None):
+    """least squares with a full covariance matrix
+
+    fullCov_cuda_LS() with block-by-block covariance matrices
+
+    To save mem :
+        - set precision to float32 rather than float64
+        - use cuda.matrix.inverse_cholesky() rather than cuda.matrix.inverse()
+            but this end up with tiny model error, why?
+    """
+    if gpu_device is not None:
+        import cuda
+        device    = cuda.manager.device(gpu_device)
+        precision = 'float32'
+        print(f'gpu device {gpu_device}, precision {precision}')
+
+    # C inverse
+    Cs_inv = []
+    for C in Cs:
+        if gpu_device is not None:
+            Ci = cuda.matrix(source=C, dtype=precision).inverse().copy_to_host(type='numpy')
+        else:
+            Ci = scipy.linalg.inv(C)
+        Cs_inv.append(Ci)
+    print(' :: got blockwise Cx^-1')
+
+
+    # One: G.T @ C^-1
+    One = np.full(G.T.shape, np.nan)
+    n0 = 0
+    for Ci in Cs_inv:
+        n = len(Ci)
+        One[:,n0:n0+n] = G.T[:,n0:n0+n] @ Ci
+        n0 += n
+    print(' :: got G.T Cx^-1')
+
+
+    # Two: Cm = (One @ G)^-1
+    Cm    = scipy.linalg.inv(One @ G)
+    m_std = np.sqrt(np.diag(Cm))
+    print(' :: got Cm = ( G.T Cx^-1 G )^-1')
+
+
+    # mpost
+    mpost = Cm @ One @ d
+    print(' :: got m_post')
+
+
+    # 2_norm^2 residuals
+    resid = d - (G @ mpost)
+    e2    = np.sum(resid**2)
+
+
+    # Perform SVD
+    singv = scipy.linalg.svdvals(G)
+    cond = singv[0] / singv[-1]
+    rank = np.linalg.matrix_rank(G)
+
+    return mpost, Cm, m_std, e2, rank, singv, cond
+
+
+def multivariate_normal_centroid(ms, cs):
+    """ Linear regression to find mean
+    * Propagate multivariate models and covariances to the centroid (like taking the mean)
+
+    Parameters:
+    ms (np.ndarray, shape=(N,M)  ): N samples of m vectors with dimentsion M.
+    cs (np.ndarray, shape=(N,M,M)): N covariance matrices corresponding to the samples.
+
+    Returns:
+    centroid   (np.array): The computed centroid vector.
+    covariance (np.array): The covariance matrix of the centroid.
+    """
+    # n: num of samples; m: multivariate params dimension
+    n, m = ms.shape
+
+    # allocate the full covariance matrix, and fill-in cs in block diagonals
+    C = matrix_block_diagonal(*cs)
+    print(f'Full covariance matrix shape: {C.shape}')
+
+    # allocate system matrix G
+    I = np.eye(m)         # identity matrix for m-dim model params
+    G = np.vstack([I]*n)  # block for averaging the n-samples
+
+    # G m = d
+    mpost, Cmpost, m_std, e2, rank, singv, cond = fullCov_LS(G=G, d=ms.flatten(), Cx=C)
+
+    return mpost, Cmpost, G
+
 
 
 # **************************************************
@@ -280,7 +477,7 @@ def get_array4csi( dataDict : dict   | None = None,  # option 1
     if all([dataDict, name]) is not None:
         print('read original input data from [dataDict]')
         dsets = dataDict[name]
-        (vlos, vstd, los_inc_angle, los_azi_angle, lat, lon, roi, ref_los_vec, refyx, reflalo, std_scl, paths) = dsets
+        (vlos, vstd, los_inc_angle, los_azi_angle, lat, lon, roi, ref_los_vec, refyx, reflalo, bbox, std_scl, paths, comp) = dsets
         arr = np.array(vlos[roi])
         lat = np.array(lat[roi])
         lon = np.array(lon[roi])
@@ -315,6 +512,9 @@ def get_image_from_arr(arr, roi):
 
 
 def get_masked_index(mask, original_index):
+    if np.isnan(original_index):
+        return np.nan
+
     if mask[original_index]:
         return np.where(mask[:original_index+1])[0].size - 1
     else:
@@ -324,6 +524,15 @@ def get_masked_index(mask, original_index):
 # **************************************************
 #                     statistics
 # **************************************************
+def calc_cov(*variables):
+    nrow = len(variables)
+    ncol = len(variables[0])
+    m    = np.full((nrow, ncol), np.nan)
+    for i, v in enumerate(variables):
+        m[i] = v
+    cov = np.cov(m)
+    return cov
+
 
 def calc_reduced_chi2( r   : float | np.ndarray,
                        sig : float | np.ndarray,
@@ -369,7 +578,7 @@ def calc_wrms( r : float | np.ndarray,
     + weights are normalized, thus is relative weighting
     + if w = None | const, assume uniform, wrms simply falls back to rms.
     INPUTS:
-    *   r   :   residuals
+    *   r   :   values, residuals, whatever...
     *   w   :   weights
     """
     # unweighted RMS if w=const.
@@ -573,6 +782,45 @@ def get_unit_vector4component_of_interest( los_inc_angle : float | np.ndarray,
     return unit_vec
 
 
+def project_synthetic_motion(pole, lats, lons, inc_angles, azi_angles, roi=None, comp='en2az'):
+    """
+    pole : euler pole object for forward model plate motion
+
+    comps = [
+        'enu2los', 'en2los', 'hz2los', 'horz2los', 'u2los', 'vert2los',   # radar LOS / cross-track
+        'en2az', 'hz2az', 'orb_az', 'orbit_az',                           # radar azimuth / along-track
+        'vert', 'vertical', 'horz', 'horizontal',                         # vertical / arbitrary horizontal
+    ]
+    """
+    # (N, )
+    if roi is not None:
+        lats       = lats[roi]
+        lons       = lons[roi]
+        inc_angles = inc_angles[roi]
+        azi_angles = azi_angles[roi]
+
+    # (3, N)
+    v_enu = np.array(pole.get_velocity_enu(lats, lons))
+
+    # (3, N)
+    unit_vec = np.array(get_unit_vector4component_of_interest(los_inc_angle = inc_angles,
+                                                              los_az_angle  = azi_angles,
+                                                              comp          = comp
+                                                             ))
+    # (N, )
+    v_proj = np.sum(v_enu * unit_vec, axis=0)
+
+    if roi is not None:
+        V_proj      = np.full(roi.shape, np.nan).flatten()
+        idx         = roi.flatten().nonzero()[0]
+        V_proj[idx] = v_proj
+        V_proj      = V_proj.reshape((roi.shape))
+        return V_proj
+
+    else:
+        return v_proj
+
+
 # **************************************************
 #            matrix transform/rotation
 # **************************************************
@@ -711,7 +959,7 @@ def T_xyz2llr( x : float,
     # perfect sphere (closed form)
     if float(e) == 0.:
         r   = np.sqrt(x**2 + y**2 + z**2)
-        lat = np.rad2deg(np.arcsin(z / r))
+        lat = np.rad2deg(np.arctan2(z, np.sqrt(x**2 + y**2)))
         lon = np.rad2deg(np.arctan2(y, x))
 
     # ellipsoid (iterative algorithm)
@@ -735,45 +983,46 @@ def T_xyz2llr( x : float,
     return lat, lon, r
 
 
-def R_xyz2llr_err( w_x : float,
-                   w_y : float,
-                   w_z : float,
+def R_xyz2llr_err( w_x : float, # rad/yr
+                   w_y : float, # rad/yr
+                   w_z : float, # rad/yr
                    cartesian_covariance : np.ndarray,
                    ) -> np.ndarray :
     """
     * R_cart2sph_err()
     Adapted from disstans/disstans/tools.py
     https://github.com/tobiscode/disstans/blob/656c8be6d3d948f66fe091c7e3982e85ee6604cb/disstans/tools.py#L1688
-    Reference: Goudarzi et al., 2014, equation 18
+    Goudarzi et al., 2014, equation 18; swap the rows to {lat, lon, rate} order; there is a "sign typo" at entry (2,3) in eq. 18
     """
-    w_xy_mag = np.linalg.norm(np.array([w_x, w_y]))
-    w_mag    = np.linalg.norm(np.array([w_x, w_y, w_z]))
-    jac = np.array([
-                    [-w_x*w_z / (w_xy_mag * w_mag**2), -w_y*w_z / (w_xy_mag * w_mag**2), -w_xy_mag / w_mag**2], # Latitude
-                    [-w_y / w_xy_mag**2              ,  w_x / w_xy_mag**2              ,  0                  ], # Longitude
-                    [ w_x / w_mag                    ,  w_y / w_mag                    ,  w_z / w_mag        ]  # Rotation rate
+    w_xy_mag = np.linalg.norm([w_x, w_y])
+    w_mag    = np.linalg.norm([w_x, w_y, w_z])
+    G        = np.array([
+                    [-w_x*w_z / (w_xy_mag * w_mag**2), -w_y*w_z / (w_xy_mag * w_mag**2),  w_xy_mag / w_mag**2], # latitude
+                    [-w_y / w_xy_mag**2              ,  w_x / w_xy_mag**2              ,  0                  ], # longitude
+                    [ w_x / w_mag                    ,  w_y / w_mag                    ,  w_z / w_mag        ], # rate
                     ])
-    spherical_covariance = jac @ cartesian_covariance @ jac.T
+    spherical_covariance = G @ cartesian_covariance @ G.T
     return spherical_covariance
 
 
-def R_llr2xyz_err( w_x : float,
-                   w_y : float,
-                   w_z : float,
+def R_llr2xyz_err( lat  : float, # rad
+                   lon  : float, # rad
+                   rate : float, # rad/yr
                    spherical_covariance : np.ndarray,
                    ) -> np.ndarray :
     """
     * R_sph2cart_err()
     Inverse of the previous function
+
+    Goudarzi et al., 2014, equation. 5 & 6 (no scaling here); cols in {lat, lon, rate} order
     """
-    w_xy_mag = np.linalg.norm(np.array([w_x, w_y]))
-    w_mag    = np.linalg.norm(np.array([w_x, w_y, w_z]))
-    jac = np.array([
-                    [-w_x*w_z / (w_xy_mag * w_mag**2), -w_y*w_z / (w_xy_mag * w_mag**2), -w_xy_mag / w_mag**2], # Latitude
-                    [-w_y / w_xy_mag**2              ,  w_x / w_xy_mag**2              ,  0                  ], # Longitude
-                    [ w_x / w_mag                    ,  w_y / w_mag                    ,  w_z / w_mag        ]  # Rotation rate
+    #                        latitude                           longitude                        rate
+    J    = np.array([
+                    [-rate*np.sin(lat)*np.cos(lon)  ,  -rate*np.cos(lat)*np.sin(lon)  ,  np.cos(lat)*np.cos(lon)],
+                    [-rate*np.sin(lat)*np.sin(lon)  ,   rate*np.cos(lat)*np.cos(lon)  ,  np.cos(lat)*np.sin(lon)],
+                    [ rate*np.cos(lat)              ,               0                 ,  np.sin(lat)            ],
                     ])
-    cartesian_covariance = np.linalg.inv(jac) @ spherical_covariance @ np.linalg.inv(jac.T)
+    cartesian_covariance = J @ spherical_covariance @ J.T
     return cartesian_covariance
 
 
@@ -786,8 +1035,17 @@ def helmert_transform( x : float | np.ndarray,
                        helmert : dict
                        ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Helmert transformation with full 7 params and their rates = 14 params
-    reference: http://geoweb.mit.edu/gg/courses/201706_UNAVCO/pdf/21-ref_frames.pdf (slide no.: 13)
-    ITRF params URL: https://itrf.ign.fr/en/solutions/transformations
+
+    ******************
+    ITRF params URL : https://itrf.ign.fr/en/solutions/transformations
+
+    REFERENCE       : http://geoweb.mit.edu/gg/courses/201706_UNAVCO/pdf/21-ref_frames.pdf (slide 13)
+                      https://www.epncb.oma.be/_productsservices/coord_trans/TUTORIAL_Coordinate_Transformation.pdf (slide 10-17)
+    Online velocity
+      conversion    : https://www.epncb.oma.be/_productsservices/coord_trans/
+      calculator      https://www.unavco.org/software/geodetic-utilities/plate-motion-calculator/plate-motion-calculator.html
+    ******************
+
     INPUT
         x, y, z     : 1d array locations
         vx, vy, vz  : 1d array displacement|velocity before transformation
@@ -795,13 +1053,13 @@ def helmert_transform( x : float | np.ndarray,
     OUTPUT
         vx, vy, vz  : 1d array after transformation
     """
-    T1, dT1 = helmert['T1'] * 1e-3, helmert['dT1'] * 1e-3 # translation & rate in x-axis      [m]   [m/yr]
-    T2, dT2 = helmert['T2'] * 1e-3, helmert['dT2'] * 1e-3 # translation & rate in y-axis      [m]   [m/yr]
-    T3, dT3 = helmert['T3'] * 1e-3, helmert['dT3'] * 1e-3 # translation & rate in z-axis      [m]   [m/yr]
-    R1, dR1 = helmert['R1'] * MAS2RAD, helmert['dR1'] * MAS2RAD # rotation & rate in x-axis [rad] [rad/yr]
-    R2, dR2 = helmert['R2'] * MAS2RAD, helmert['dR2'] * MAS2RAD # rotation & rate in y-axis [rad] [rad/yr]
-    R3, dR3 = helmert['R3'] * MAS2RAD, helmert['dR3'] * MAS2RAD # rotation & rate in z-axis [rad] [rad/yr]
-    D ,  dD = helmert['D'] * 1e-9 , helmert['dD'] * 1e-9  # dilatation (scale)              [-]   [-/yr]
+    T1, dT1 = helmert['T1'] * 1e-3   , helmert['dT1'] * 1e-3    # translation & rate in x-axis  [m]   [m/yr]
+    T2, dT2 = helmert['T2'] * 1e-3   , helmert['dT2'] * 1e-3    # translation & rate in y-axis  [m]   [m/yr]
+    T3, dT3 = helmert['T3'] * 1e-3   , helmert['dT3'] * 1e-3    # translation & rate in z-axis  [m]   [m/yr]
+    R1, dR1 = helmert['R1'] * MAS2RAD, helmert['dR1'] * MAS2RAD # rotation    & rate in x-axis  [rad] [rad/yr]
+    R2, dR2 = helmert['R2'] * MAS2RAD, helmert['dR2'] * MAS2RAD # rotation    & rate in y-axis  [rad] [rad/yr]
+    R3, dR3 = helmert['R3'] * MAS2RAD, helmert['dR3'] * MAS2RAD # rotation    & rate in z-axis  [rad] [rad/yr]
+    D ,  dD = helmert['D']  * 1e-9   , helmert['dD']  * 1e-9    # dilatation  & rate            [-]   [-/yr]
 
     # position matrix
     pxyz = np.stack([x, y, z])

@@ -75,9 +75,9 @@ class EulerPole:
 
     def __init__(self, name=None, itrf='2014',
                     wx=None,        wy=None,        wz=None,
-                    wx_sig=0,       wy_sig=0,       wz_sig=0,
+                    wx_sig=0.,      wy_sig=0.,      wz_sig=0.,
                     pole_lat=None,  pole_lon=None,  rot_rate=None, unit='mas/yr',
-                    dTx=0,          dTy=0,          dTz=0):
+                    dTx=0.,         dTy=0.,         dTz=0.):
 
         # check if name is provided
         if name is not None:
@@ -85,7 +85,8 @@ class EulerPole:
                 PMM = ITRF2014_PMM
             elif itrf == '2020':
                 PMM = ITRF2020_PMM
-                # origin bias rate (a 3-dimensional translation rate for all plates in Altamimi et al., 2023)
+                # ORB: origin bias rate -- a 3-dimensional translation rate for all ITRF2020_PMM plates
+                # REFERENCE:  [Altamimi et al., 2023]
                 dTx, dTy, dTz = PMM['ORB'][0], PMM['ORB'][1], PMM['ORB'][2]
             if name in PMM: # if name is given properly, read from table directly
                 print(f'an existing plate in ITRF{itrf} table: {name}')
@@ -104,9 +105,9 @@ class EulerPole:
             wx = wx / MASY2DMY if wx else None
             wy = wy / MASY2DMY if wy else None
             wz = wz / MASY2DMY if wz else None
-            wx_sig = wx_sig / MASY2DMY if wx_sig else None
-            wy_sig = wy_sig / MASY2DMY if wy_sig else None
-            wz_sig = wz_sig / MASY2DMY if wz_sig else None
+            wx_sig = wx_sig / MASY2DMY if wx_sig is not None else None
+            wy_sig = wy_sig / MASY2DMY if wy_sig is not None else None
+            wz_sig = wz_sig / MASY2DMY if wz_sig is not None else None
             rot_rate = rot_rate / MASY2DMY if rot_rate else None
         elif unit.lower().startswith('rad'):
             unit = 'rad/yr'
@@ -114,9 +115,9 @@ class EulerPole:
             wx = wx / MAS2RAD if wx else None
             wy = wy / MAS2RAD if wy else None
             wz = wz / MAS2RAD if wz else None
-            wx_sig = wx_sig / MAS2RAD if wx_sig else None
-            wy_sig = wy_sig / MAS2RAD if wy_sig else None
-            wz_sig = wz_sig / MAS2RAD if wz_sig else None
+            wx_sig = wx_sig / MAS2RAD if wx_sig is not None else None
+            wy_sig = wy_sig / MAS2RAD if wy_sig is not None else None
+            wz_sig = wz_sig / MAS2RAD if wz_sig is not None else None
             rot_rate = rot_rate / MAS2RAD if rot_rate else None
 
         else:
@@ -126,7 +127,7 @@ class EulerPole:
         if all([wx, wy, wz]):
             # calc Euler pole from vector
             #pole_lat, pole_lon, rot_rate = cart2sph(wx, wy, wz)
-            pole_lat, pole_lon, rot_rate = ut.T_xyz2llr(wx, wy, wz, e=0)
+            pole_lat, pole_lon, rot_rate = ut.T_xyz2llr(wx, wy, wz, e=0.)
 
         elif all([pole_lat, pole_lon, rot_rate]):
             # calc Euler vector from pole
@@ -290,15 +291,15 @@ class EulerPole:
                 xyz_cov     = np.diag(xyz_std**2)             # rad^2/year^2
             # spherical expression: sigma. [deg], [deg], [mas/year] or [deg/Ma]
             elif ('sph_lat_std' in in_err) and ('sph_lon_std' in in_err):
-                sph_lat_std  = np.array(in_err['sph_lat_std'])      # deg
-                sph_lon_std  = np.array(in_err['sph_lon_std'])      # deg
+                sph_lat_std  = float(in_err['sph_lat_std'])      # deg
+                sph_lon_std  = float(in_err['sph_lon_std'])      # deg
                 if 'sph_mas_std' in in_err:
-                    sph_mas_std  = np.array(in_err['sph_mas_std'])  # mas/year
+                    sph_mas_std  = float(in_err['sph_mas_std'])  # mas/year
                     sph_std      = [np.deg2rad(sph_lat_std),        # rad
                                     np.deg2rad(sph_lon_std),        # rad
                                     sph_mas_std * MAS2RAD  ]        # rad/yr
                 if 'sph_deg_std' in in_err:
-                    sph_deg_std  = np.array(in_err['sph_deg_std'])  # deg/Ma
+                    sph_deg_std  = float(in_err['sph_deg_std'])  # deg/Ma
                     sph_std      = [np.deg2rad(sph_lat_std),        # rad
                                     np.deg2rad(sph_lon_std),        # rad
                                     np.deg2rad(sph_deg_std)*1e-6]   # rad/yr
@@ -324,20 +325,21 @@ class EulerPole:
         #             lat  [[ rad^2     rad^2       rad^2/yr   ]
         #             lon   [ rad^2     rad^2       rad^2/yr   ]
         #            rate   [ rad^2/yr  rad^2/yr    rad^2/yr^2 ]]
-        if xyz_cov is not None: # 1. propagate from cartesian cov
+        if xyz_cov is not None: # 1. propagate from cartesian xyz_cov
             sph_cov_rad = ut.R_xyz2llr_err(self.wx*MAS2RAD,    #  rad/yr
                                            self.wy*MAS2RAD,    #  rad/yr
                                            self.wz*MAS2RAD,    #  rad/yr
                                            xyz_cov)            # (rad/yr) ^2
         else: # 2. assume diagonal from user input
+            sph_std     = np.array(sph_std)
             sph_cov_rad = np.diag(sph_std**2)
-            xyz_cov     = ut.R_llr2xyz_err(self.wx*MAS2RAD,    #  rad/yr
-                                           self.wy*MAS2RAD,    #  rad/yr
-                                           self.wz*MAS2RAD,    #  rad/yr
+            xyz_cov     = ut.R_llr2xyz_err(self.poleLat*np.pi/180,  #  rad
+                                           self.poleLon*np.pi/180,  #  rad
+                                           self.rotRate*MAS2RAD,    #  rad/yr
                                            sph_cov_rad)
             xyz_std     = np.diag(xyz_cov)**0.5         # rad/year
             xyz_mas_std = xyz_std/MAS2RAD               # mas/year
-            xyz_deg_std = np.rad2deg(xyz_std*1e6)       # deg/Ma
+            xyz_deg_std = np.rad2deg(xyz_std) * 1e6     # deg/Ma
 
         # covariance in spherical space
         # sph_cov_deg:        lat       lon         rate
@@ -380,7 +382,7 @@ class EulerPole:
             print(f'   wy             : {self.wy * MASY2DMY:{md}.4f} ± {y_deg_std} deg/Ma   = {self.wy:{md}.4f} ± {y_mas_std} mas/yr')
             print(f'   wz             : {self.wz * MASY2DMY:{md}.4f} ± {z_deg_std} deg/Ma   = {self.wz:{md}.4f} ± {z_mas_std} mas/yr')
             if self.xyz_cov is not None:
-                print(f'Full covariance in Cartesian expression (rad/yr):')
+                print(f'Full covariance in Cartesian expression (rad^2/yr^2):')
                 print(f'   covariance     : {self.xyz_cov[0]}')
                 print(f'                    {self.xyz_cov[1]}')
                 print(f'                    {self.xyz_cov[2]}')
@@ -413,7 +415,7 @@ class EulerPole:
         # 2) save to outfile
         if outfile:
             from contextlib import redirect_stdout
-            with open(outfile, 'w') as f:
+            with open(outfile, 'a') as f:
                 with redirect_stdout(f):
                     _show_content()
 
@@ -469,12 +471,13 @@ class EulerPole:
         vx, vy, vz = np.cross(omega, xyz.T).T.reshape(xyz.shape)
 
         # add origin bias rates (ORB) for ITRF2020 PMM
-        print('ORB or not: ', orb, (self.dTx, self.dTy, self.dTz))
         if orb and all(_dT is not None for _dT in (self.dTx, self.dTy, self.dTz)):
-            print('apply ORB to velocity xyz')
-            vx += self.dTx * 1e-3
-            vy += self.dTy * 1e-3
-            vz += self.dTz * 1e-3
+            if all(float(_dT) != 0.0 for _dT in (self.dTx, self.dTy, self.dTz)):
+                print(f'Apply ORB to velocity_xyz : {orb}')
+                print(f'   translate velocity_xyz : {self.dTx, self.dTy, self.dTz} meter/year')
+                vx += self.dTx * 1e-3  # meter to mm
+                vy += self.dTy * 1e-3  # meter to mm
+                vz += self.dTz * 1e-3  # meter to mm
 
         # Helmert transform vxyz to another NNR system
         if helmert:

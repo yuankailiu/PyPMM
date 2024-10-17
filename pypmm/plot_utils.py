@@ -18,11 +18,19 @@ from shapely import geometry
 
 import matplotlib
 import matplotlib.pyplot as plt
-from matplotlib.patches import Ellipse
+import matplotlib.patches as mpatches
+from matplotlib.patches import Ellipse, Rectangle
+from matplotlib.legend_handler import HandlerPatch
 import matplotlib.transforms as transforms
+import matplotlib.ticker as mticker
+import matplotlib.legend as mlegend
+
+from cartopy.mpl.ticker import (LongitudeFormatter, LatitudeFormatter,
+                                LatitudeLocator, LongitudeLocator)
 
 from cartopy import crs as ccrs, feature as cfeature
 
+from pypmm import utils as ut
 from pypmm.models import (GSRM_NNR_V2_1_PMM,
                           NNR_MORVEL56_PMM,
                           PLATE_BOUNDARY_FILE,
@@ -31,6 +39,78 @@ from pypmm.models import (GSRM_NNR_V2_1_PMM,
                           )
 
 ###############  basic general plotting  ###################
+
+def get_legend_pos_figure(fig, legend):
+    # Get the figure size in inches
+    fig_size_inches = fig.get_size_inches()
+
+    # Calculate the figure dimensions in pixels
+    fig_w_pix = fig_size_inches[0] * fig.dpi
+    fig_h_pix = fig_size_inches[1] * fig.dpi
+
+    # Check if there is a title and get its bounding box if it exists
+    if legend.get_title() is not None:
+        bbox = np.array(legend.get_title().get_window_extent())
+    elif legend.get_lines() is not None:
+        bbox = np.array(legend.get_lines()[0].get_window_extent())
+    elif legend.get_patches() is not None:
+        bbox = np.array(legend.get_patches()[0].get_window_extent())
+    else:
+        return None
+
+    # conver to figure portion coord
+    item_x = bbox[0,0] / fig_w_pix
+    item_y = bbox[0,1] / fig_h_pix
+
+    return item_x, item_y
+
+
+class HandlerEllipse(HandlerPatch):
+    def __init__(self, width=20, height=10, lw=1, **kwargs):
+        super().__init__(**kwargs)
+        self.width  = width
+        self.height = height
+        self.lw     = lw
+
+    def create_artists(self, legend, orig_handle,
+                       xdescent, ydescent, width, height, fontsize, trans):
+        center = (0.5 * width - 0.5 * xdescent, 0.5 * height - 0.5 * ydescent)
+        p = mpatches.Ellipse(xy=center, width=self.width, height=self.height, linewidth=self.lw,
+                    facecolor=orig_handle.get_facecolor(), edgecolor=orig_handle.get_edgecolor())
+        #self.update_prop(p, orig_handle, legend)
+        p.set_transform(trans)
+        return [p]
+
+
+def create_ellipses_handler_map(ellps, width=20, height=10):
+    handler_map = {}
+    for i, ell in enumerate(ellps):
+        handler_map[ell] = HandlerEllipse(width=width*(0.6**i), height=height*(0.5**i))
+    return handler_map
+
+
+def update_handles(legend, ms=30, ec='k', lw=1, alpha=1.0):
+    # forget why i wrote this
+    for ha in legend.legend_handles:
+        ha.set_sizes([ms])
+        ha.set_edgecolor(ec)
+        ha.set_linewidth(lw)
+        ha.set_alpha(alpha)
+
+
+def update_axis_projection(ax, new_projection):
+    fig = ax.figure  # Get the figure from the ax object
+    pos = ax.get_position()  # Get the position of the original axis
+
+    # Remove the original axis from the figure
+    fig.delaxes(ax)
+
+    # Create a new axis with the desired projection
+    new_ax = fig.add_axes(pos, projection=new_projection)
+
+    return new_ax
+
+
 def text_accomodating_xylim(fig, ax):
     # Update limits to ensure all text is within the plot area
     fig.canvas.draw()  # Draw the canvas to update text positions
@@ -54,33 +134,38 @@ def text_accomodating_xylim(fig, ax):
     ax.set_ylim(y_min-y_margin, y_max+y_margin)
 
 
-def update_handles(legend, ms=30, ec='k', lw=1, alpha=1.0):
-    for ha in legend.legend_handles:
-        ha.set_sizes([ms])
-        ha.set_edgecolor(ec)
-        ha.set_linewidth(lw)
-        ha.set_alpha(alpha)
-
-
-def lighten_color(color, amount=0.5):
+def tweak_color(color, luminos=1, alpha=1):
     """
     url: https://stackoverflow.com/questions/37765197/darken-or-lighten-a-color-in-matplotlib
     Lightens the given color by multiplying (1-luminosity) by the given amount.
     Input can be matplotlib color string, hex string, or RGB tuple.
-
+    Input:
+        color   -  str / cmap / (r,g,b) / (r, g, b, a)
+        luminos - [0 ~ ??] lighter to darker
+        alpha   - transparency [0 ~ 1] invisible to opaque
+    Output:
+        c       -  str / cmap / (r,g,b) / (r, g, b, a)
     Examples:
-    >> lighten_color('g', 0.3)
-    >> lighten_color('#F034A3', 0.6)
-    >> lighten_color((.3,.55,.1), 0.5)
+        tweak_color('g', 0.3)
+        tweak_color('#F034A3', 0.6)
+        tweak_color((.3,.55,.1), 0.5, 0.8)
     """
     import matplotlib.colors as mc
     import colorsys
+
     try:
         c = mc.cnames[color]
     except:
         c = color
-    c = colorsys.rgb_to_hls(*mc.to_rgb(c))
-    return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
+
+    if float(luminos) != 1.:
+        c = colorsys.rgb_to_hls(*mc.to_rgb(c))
+        c = colorsys.hls_to_rgb(c[0], 1 - luminos * (1 - c[1]), c[2])
+
+    if float(alpha) != 1.:
+        c = matplotlib.colors.to_rgba(c, alpha=alpha)
+
+    return c
 
 
 def discrete_cmap( N    : int,
@@ -97,44 +182,147 @@ def discrete_cmap( N    : int,
 
 
 # better image show
-def plot_imshow( ax     : matplotlib.axes.Axes,
-                 data   : np.ndarray,
-                 vlim   : tuple | None = [None,None],
-                 cmap   : str   | None = 'RdBu_r',
-                 title  : str   | None = None,
-                 label  : str   | None = 'mm/yr',
-                 intp   : str   | None = 'nearest',
-                 cbar   : bool  | None = True,
-                 shrink : float | None = 0.5,
-                 aspect : str   | None = None,
-                 axon   : str   | None = 'off'
+def plot_imshow( ax       : matplotlib.axes.Axes,
+                 data     : np.ndarray,
+                 vlim     : tuple | None = [None,None],
+                 cmap     : str   | None = 'RdBu_r',
+                 title    : str   | None = None,
+                 label    : str   | None = 'mm/yr',
+                 intp     : str   | None = 'nearest',
+                 cbar     : bool  | None = True,
+                 shrink   : float | None = 0.65,
+                 aspect   : str   | None = None,
+                 axon     : str   | None = 'off',
+                 fontsize : float | None = 10,
+                 verbose  : bool  | None = False,
                  )     -> tuple :
     vmin, vmax = vlim
+
+    if vmin is None: vmin = np.nanmin(data)
+    if vmax is None: vmax = np.nanmax(data)
+    vmin = ut.round_precision(vmin, prec=4)
+    vmax = ut.round_precision(vmax, prec=4)
+
     im = ax.imshow(data, vmin=vmin, vmax=vmax, cmap=cmap, interpolation=intp, aspect=aspect)
     bound = np.argwhere(~np.isnan(data))
     ax.set_xlim(min(bound[:, 1]), max(bound[:, 1]))
     ax.set_ylim(max(bound[:, 0]), min(bound[:, 0]))
     ax.axis(axon)
     if title:
-        ax.set_title(title)
+        ax.set_title(title, fontsize=fontsize)
     if cbar:
-        cbar = plt.colorbar(im, ax=ax, orientation='horizontal', shrink=shrink)
-        cbar.set_label(label=label, size=10)
-        cbar.ax.tick_params(labelsize=10)
+        cbar = plt.colorbar(im, ax=ax, ticks=[vmin, vmax], orientation='horizontal', shrink=shrink, aspect=shrink*15)
+        cbar.ax.tick_params(labelsize=fontsize*shrink)
+        cbar.set_label(label=label, size=fontsize*shrink)
     return ax, im, cbar
 
 
+def tablelegend(ax, handles=None, col_labels=None, row_labels=None, tip_label="", *args, **kwargs):
+    """
+    Place a table legend on the axes.
+
+    Creates a legend where the labels are not directly placed with the artists,
+    but are used as row and column headers, looking like this:
+
+    tip_label   | col_labels[1] | col_labels[2] | col_labels[3]
+    -------------------------------------------------------------
+    row_labels[1] |
+    row_labels[2] |              <artists go there>
+    row_labels[3] |
+
+
+    Parameters
+    ----------
+
+    ax : `matplotlib.axes.Axes`
+        The artist that contains the legend table, i.e. current axes instant.
+
+    col_labels : list of str, optional
+        A list of labels to be used as column headers in the legend table.
+        `len(col_labels)` needs to match `ncol`.
+
+    row_labels : list of str, optional
+        A list of labels to be used as row headers in the legend table.
+        `len(row_labels)` needs to match `len(handles) // ncol`.
+
+    tip_label : str, optional
+        Label for the top left corner in the legend table.
+
+    ncol : int
+        Number of columns.
+
+
+    Other Parameters
+    ----------------
+
+    Refer to `matplotlib.legend.Legend` for other parameters.
+
+    """
+    #################### same as `matplotlib.axes.Axes.legend` #####################
+    if handles is None:
+        handles, labels, kwargs = mlegend._parse_legend_args([ax], *args, **kwargs)
+
+    if col_labels is None and row_labels is None:
+        ax.legend_ = mlegend.Legend(ax, handles, labels, **kwargs)
+        ax.legend_._remove_method = ax._remove_legend
+        return ax.legend_
+    #################### modifications for table legend ############################
+    else:
+        ncol = kwargs.pop('ncol')
+        handletextpad = kwargs.pop('handletextpad', 0 if col_labels is None else -2)
+        tip_label = [tip_label]
+
+        # blank rectangle handle
+        extra = [Rectangle((0, 0), 1, 1, fc="w", fill=False, edgecolor='none', linewidth=0)]
+
+        # empty label
+        empty = [""]
+
+        # number of rows infered from number of handles and desired number of columns
+        nrow = len(handles) // ncol
+
+        # organise the list of handles and labels for table construction
+        if col_labels is None:
+            assert nrow == len(row_labels), "nrow = len(handles) // ncol = %s, but should be equal to len(row_labels) = %s." % (nrow, len(row_labels))
+            leg_handles = extra * nrow
+            leg_labels  = row_labels
+        elif row_labels is None:
+            assert ncol == len(col_labels), "ncol = %s, but should be equal to len(col_labels) = %s." % (ncol, len(col_labels))
+            leg_handles = []
+            leg_labels  = []
+        else:
+            assert nrow == len(row_labels), "nrow = len(handles) // ncol = %s, but should be equal to len(row_labels) = %s." % (nrow, len(row_labels))
+            assert ncol == len(col_labels), "ncol = %s, but should be equal to len(col_labels) = %s." % (ncol, len(col_labels))
+            leg_handles = extra + extra * nrow
+            leg_labels  = tip_label + row_labels
+        for col in range(ncol):
+            if col_labels is not None:
+                leg_handles += extra
+                leg_labels  += [col_labels[col]]
+            leg_handles += handles[col*nrow:(col+1)*nrow]
+            leg_labels  += empty * nrow
+
+        # Create legend
+        ax.legend_ = mlegend.Legend(ax, leg_handles, leg_labels, ncol=ncol+int(row_labels is not None), handletextpad=handletextpad, **kwargs)
+        ax.legend_._remove_method = ax._remove_legend
+        return ax.legend_
+
+
 # visualize the error ellipse (pole & covariance)
-def confidence_ellipse( ax        : matplotlib.axes.Axes,
-                        x         : np.ndarray | None = None,
-                        y         : np.ndarray | None = None,
-                        cov       : np.ndarray | None = None,
-                        n_std     : float      | None = 2.,
-                        facecolor : str        | None = 'none',
-                        from_data : bool       | None = False,
-                        print_msg : bool       | None = False,
-                        **kwargs,
-                        ):
+def draw_confidence_ellipse( ax        : matplotlib.axes.Axes,
+                             x         : np.ndarray | None = None ,
+                             y         : np.ndarray | None = None ,
+                             cov       : np.ndarray | None = None ,
+                             n_std     : float      | None = 2.   ,
+                             color     : str        | None = 'b'  ,
+                             elp_lw    : float      | None = 1    ,
+                             elp_alpha : float      | None = 1    ,
+                             markersize: float      | None = 24   ,
+                             markerec  : float      | None = 'k'  ,
+                             from_data : bool       | None = False,
+                             print_msg : bool       | None = False,
+                             **kwargs,
+                             ):
     """Create a plot of the covariance confidence ellipse of *x* and *y*.
     https://matplotlib.org/stable/gallery/statistics/confidence_ellipse.html
 
@@ -149,8 +337,20 @@ def confidence_ellipse( ax        : matplotlib.axes.Axes,
     n_std : float
         The number of standard deviations to determine the ellipse's radiuses.
 
-    facecolor : str
-        face color of the ellipse
+    color : str
+        color for both edge and face
+
+    elp_lw : float
+        linewidth of ellipse edge
+
+    elp_alpha : float
+        alpha for facecolor
+
+    markersize : float
+        size of the centroid marker
+
+    markerec : str
+        edgecolor of the centroid marker
 
     from_data : bool
         whether to estimate the covariance directly from input data x, y
@@ -165,10 +365,6 @@ def confidence_ellipse( ax        : matplotlib.axes.Axes,
     -------
     matplotlib.patches.Ellipse
     """
-    ec=kwargs['ec']               if 'ec'        in kwargs else 'k'
-    edgecolor=kwargs['edgecolor'] if 'edgecolor' in kwargs else 'k'
-    alpha=kwargs['alpha']         if 'alpha'     in kwargs else 1
-    #zorder=kwargs['zorder']       if 'zorder'    in kwargs else 2
 
     def _transf_ellipse(ax, elps, transf):
         # apply the affine transform and then the map coordinate transform
@@ -192,6 +388,10 @@ def confidence_ellipse( ax        : matplotlib.axes.Axes,
     mean_x = np.nanmean(x)
     mean_y = np.nanmean(y)
 
+    # set color
+    ec = color
+    fc = tweak_color(color, alpha=elp_alpha)
+
     # plot the error ellipse
     if cov is not None:
         pearson = cov[0, 1]/np.sqrt(cov[0, 0] * cov[1, 1])
@@ -199,8 +399,7 @@ def confidence_ellipse( ax        : matplotlib.axes.Axes,
         pearson = np.clip(pearson, -1.0, 1.0)  # make sure to be bounded for numerical reason
         ell_radius_x = np.sqrt(1 + pearson)
         ell_radius_y = np.sqrt(1 - pearson)
-        kwargs['alpha'] = 1
-        ellipse = Ellipse((0, 0), width=ell_radius_x*2, height=ell_radius_y*2, facecolor='none', **kwargs)
+        ellipse = mpatches.Ellipse((0, 0), width=ell_radius_x*2, height=ell_radius_y*2, fc=fc, ec=ec, lw=elp_lw, **kwargs)
 
         # the ellipse bound with the given number of std (n_std=2 for 95% confid. interval)
         scale_x = np.sqrt(cov[0, 0]) * n_std
@@ -213,11 +412,6 @@ def confidence_ellipse( ax        : matplotlib.axes.Axes,
         ellipse = _transf_ellipse(ax, ellipse, transf)
         ax.add_patch(ellipse)
 
-        if facecolor != 'none':
-            ellipsefill = Ellipse((0, 0), width=ell_radius_x*2, height=ell_radius_y*2, facecolor=facecolor, alpha=alpha)
-            ellipsefill = _transf_ellipse(ax, ellipsefill, transf)
-            ax.add_patch(ellipsefill)
-
         if print_msg:
             print('--------------------')
             print(f'covariance matrix = \n{cov}')
@@ -228,18 +422,18 @@ def confidence_ellipse( ax        : matplotlib.axes.Axes,
 
         # plot the pole location
         if hasattr(ax, 'projection'):
-            ax.scatter(mean_x, mean_y, s=10, marker='o', fc='white', ec=ec, transform=ccrs.PlateCarree())
+            ax.scatter(mean_x, mean_y, s=markersize, marker='o', fc=fc, ec=markerec, transform=ccrs.PlateCarree(), **kwargs)
         else:
-            ax.scatter(mean_x, mean_y, s=10, marker='o', fc='white', ec=ec)
+            ax.scatter(mean_x, mean_y, s=markersize, marker='o', fc=fc, ec=markerec, **kwargs)
 
     else:
         # plot the pole location, show legend
-        kwargs['alpha'] = 1
         if hasattr(ax, 'projection'):
-            ax.scatter(mean_x, mean_y, s=10, marker='o', fc='white', transform=ccrs.PlateCarree(), **kwargs)
+            ax.scatter(mean_x, mean_y, s=markersize, marker='o', fc=fc, transform=ccrs.PlateCarree(), **kwargs)
         else:
-            ax.scatter(mean_x, mean_y, s=10, marker='o', fc='white', **kwargs)
-    return
+            ax.scatter(mean_x, mean_y, s=markersize, marker='o', fc=fc, **kwargs)
+
+    return ellipse
 
 
 ###############  block model plotting  ###################
@@ -284,16 +478,31 @@ def plot_block_diff( block1   : object,
     fig.colorbar(im3, cax=cax3, label=clabel)
     return fig, axs
 
+def num_to_sigma_string(lst):
+    if not lst:
+        return "()"
+    elif len(lst) == 1:
+        return fr"($\pm${lst[0]}$\sigma$)"
+    elif len(lst) == 2:
+        return fr"($\pm${lst[0]} and $\pm${lst[1]}$\sigma$)"
+    else:
+        comma = fr", $\pm$"
+        return fr"($\pm${comma.join(map(str, lst[:-1]))}, and $\pm${lst[-1]}$\sigma$)"
 
-def plot_pole_covariance( poles    : object,
-                          names    : list[str],
-                          colors   : list[str],
-                          n_std    : float | None = 2,
-                          extent   : str   | list | tuple | None = 'auto',
-                          radius   : float | None = 20,
-                          axes     : list[matplotlib.axes.Axes] | None = None,
-                          grids_on : bool  | None = True,
-                          **kwargs,
+
+def plot_pole_covariance( poles     : object,
+                          names     : list[str],
+                          colors    : list[str],
+                          n_std     : float | None = 2,
+                          extent    : str   | list | tuple | None = 'auto',
+                          radius    : float | None = 20,
+                          axes      : list[matplotlib.axes.Axes] | None = None,
+                          grids_on  : bool  | None = True,
+                          elp_lw    : float | None = 1,
+                          elp_alpha : float | None = 1,
+                          axLabels  : list  | None = [None,None,'Rate [$^\circ$/Ma]'],
+                          leg_ncol  : int   | None = 3,
+                          **kwargs,  # for crrs.features() in ax1
                           ) -> tuple :
     """Provide the pole objects, plot the covariance in 3 subplots
         1. Lat vs Lon
@@ -311,12 +520,21 @@ def plot_pole_covariance( poles    : object,
 
     # initialize axes
     if axes is not None:
-        ax1, ax2, ax3 = axes[0], axes[1], axes[2]
+        if len(axes) == 3:
+            ax1, ax2, ax3 = axes
+            axleg = ax3
+        elif len(axes) == 4:
+            ax1, ax2, ax3, axleg = axes
     else:
         ax1 = fig.add_subplot(gspec[0,0], projection=map_proj, aspect='auto')
         ax2 = fig.add_subplot(gspec[0,1], sharey=ax1)
         ax3 = fig.add_subplot(gspec[1,0], sharex=ax1)
 
+    locator = mticker.MaxNLocator(nbins=5, steps=[1,2,4,5,10], prune='both')
+    tickw = 1.4
+
+    # axis labels
+    lat_label, lon_label, rot_label = axLabels
 
     # axis 1 - {Lon, Lat}
     if extent is None:
@@ -332,24 +550,91 @@ def plot_pole_covariance( poles    : object,
         print(f'user-input map extent: {extent}')
         ax1.set_extent(extent, crs=ccrs.PlateCarree())
     if grids_on:
-        gl = ax1.gridlines(crs=ccrs.PlateCarree(), draw_labels=False, linewidth=0.1, linestyle='--', color='k')
+        gl = ax1.gridlines(crs=ccrs.PlateCarree(),
+                        color='gray',
+                        draw_labels=False,
+                        linewidth=0.1,
+                        linestyle='--',
+                        xlocs=locator,
+                        ylocs=locator,
+                        xformatter=LongitudeFormatter(),
+                        yformatter=LatitudeFormatter(),
+                        )
+    else:
+        gl = ax1.gridlines(crs=ccrs.PlateCarree(),
+                        color='gray',
+                        draw_labels=True,
+                        linewidth=0,
+                        xlocs=locator,
+                        ylocs=locator,
+                        xformatter=LongitudeFormatter(),
+                        yformatter=LatitudeFormatter(),
+                        )
 
-    ax1.add_feature(cfeature.BORDERS  , lw=0.6)
-    ax1.add_feature(cfeature.STATES   , lw=0.1)
-    ax1.add_feature(cfeature.OCEAN    , color='#D4F1F4')
-    ax1.add_feature(cfeature.LAKES    , color='#D4F1F4')
-    ax1.add_feature(cfeature.LAND     , color='lightgray')
-    ax1.add_feature(cfeature.COASTLINE, lw=0.6)
+        # Get the tick locations
+        x_ticks = gl.xlocator.tick_values(*ax1.get_xlim())
+        y_ticks = gl.ylocator.tick_values(*ax1.get_ylim())
+        x_ticklabels = gl.xformatter.format_ticks(x_ticks)
+        y_ticklabels = gl.yformatter.format_ticks(y_ticks)
 
+        gl.bottom_labels = False
+        gl.right_labels  = False
+        ax1.set_xticks(x_ticks, crs=ccrs.PlateCarree())
+        ax1.set_yticks(y_ticks, crs=ccrs.PlateCarree())
+        ax1.xaxis.set_ticklabels([])
+        ax1.yaxis.set_ticklabels([])
+        ax1.xaxis.set_ticks_position('both')
+        ax1.yaxis.set_ticks_position('both')
+    ax1.tick_params(axis="both", direction="in", width=tickw, labeltop=True, labelbottom=False, labelleft=True, labelright=False)
+    if lat_label is not None:
+        ax1.set_ylabel(lat_label)
+    if lon_label is not None:
+        ax1.set_xlabel(lon_label)
+
+    Ells = []
+    Handler_map = {}
     for pole, color, name in zip(poles, colors, names):
         try:
             cov   = np.flip(pole.sph_cov_deg[:2,:2])  # {lat,lon} flip to {lon,lat}
         except:
             cov   = None
-        label = str(name)
-        confidence_ellipse(ax1, x=pole.poleLon, y=pole.poleLat, cov=cov, n_std=n_std,
-                           edgecolor=color, facecolor=color, label=label, print_msg=False, **kwargs)
-    ax1.legend(loc='upper left', fontsize=10)
+
+        if not isinstance(n_std, (list,np.ndarray)):
+            n_std = [n_std]
+        n_std.sort(reverse=True) # descending order
+
+        if isinstance(n_std, (list,np.ndarray)):
+            ells = []
+            for i in range(len(n_std)):
+                ci = tweak_color(color, luminos=(i+1)/len(n_std))
+                ell = draw_confidence_ellipse(ax1, x=pole.poleLon, y=pole.poleLat, cov=cov, n_std=n_std[i], color=ci, elp_lw=elp_lw, elp_alpha=elp_alpha, print_msg=False)
+                ells.append(ell)
+            ells = tuple(ells)
+            handler_map = create_ellipses_handler_map(ells)
+            Ells.append(ells)
+            Handler_map.update(handler_map)
+        else:
+            ell = draw_confidence_ellipse(ax1, x=pole.poleLon, y=pole.poleLat, cov=cov, n_std=n_std, color=color, elp_lw=elp_lw, elp_alpha=elp_alpha, print_msg=False, label=name)
+
+    # add legend
+    legtitle    = 'Pole uncertainties '
+    legtitle   += num_to_sigma_string(n_std)
+
+    if len(Ells) != 0:
+        ncol = leg_ncol
+        leg  = axleg.legend(Ells, names, handler_map=Handler_map,
+                          loc='upper left', fontsize=12,
+                          bbox_to_anchor=(-0.05, 0.85),
+                          frameon=False, ncol=leg_ncol, columnspacing=1,
+                          title=legtitle,
+                          )
+    else:
+        handles, labels = ax1.get_legend_handles_labels()
+        leg  = axleg.legend(handles, labels,
+                          loc='lower left', fontsize=12,
+                          title=legtitle,
+                          )
+    leg._legend_box.align = 'left'
 
 
     # axis 2 - {rate, lat}
@@ -362,18 +647,25 @@ def plot_pole_covariance( poles    : object,
             cov   = np.flip(cov)  # flip to {rate, lat}
         except:
             cov   = None
-        label = str(name)
-        confidence_ellipse(ax2, x=pole.rotRate*MASY2DMY, y=pole.poleLat, cov=cov, n_std=n_std,
-                           edgecolor=color, facecolor=color, label=label, **kwargs)
-    ax2.tick_params(axis="y",direction="in")
-    ax2.tick_params(axis="x",direction="in", pad=-15)
-    ax2.xaxis.set_ticks_position('both')
-    ax2.yaxis.set_ticks_position('both')
-    ax2.yaxis.set_label_position("right")
-    ax2.tick_params(labeltop=False, labelbottom=True, labelleft=False, labelright=True)
-    ax2.set_ylabel('Latitude [deg]')
-    ax2.set_xlabel('Rate [deg/Ma]', labelpad=-32)
-    ax2.xaxis.set_major_formatter('{x:.2f}')
+
+        if isinstance(n_std, (list,np.ndarray)):
+            for i in range(len(n_std)):
+                ci = tweak_color(color, luminos=(i+1)/len(n_std))
+                ell = draw_confidence_ellipse(ax2, x=pole.rotRate*MASY2DMY, y=pole.poleLat, cov=cov, n_std=n_std[i],
+                                         color=ci, elp_lw=elp_lw, elp_alpha=elp_alpha, print_msg=False)
+        else:
+            ell = draw_confidence_ellipse(ax2, x=pole.rotRate*MASY2DMY, y=pole.poleLat, cov=cov, n_std=n_std,
+                                         color=color, elp_lw=elp_lw, elp_alpha=elp_alpha, print_msg=False)
+
+    ax2.tick_params(axis="both", direction="in", width=tickw, labeltop=True, labelbottom=False, labelleft=False, labelright=True)
+    ax2.xaxis.set_ticks_position('both'); ax2.xaxis.set_label_position("top")
+    ax2.yaxis.set_ticks_position('both'); ax2.yaxis.set_label_position("right")
+    ax2.set_yticks(y_ticks, labels=y_ticklabels)
+    ax2.xaxis.set_major_locator(locator)
+    if lat_label is not None:
+        ax2.set_ylabel(lat_label)
+    if rot_label is not None:
+        ax2.set_xlabel(rot_label)
 
 
     # axis 3 - {Lon, rate}
@@ -385,26 +677,44 @@ def plot_pole_covariance( poles    : object,
             cov[1,1] *= 1e12    # deg^2/yr^2 -> deg^2/Ma^2
         except:
             cov   = None
-        label = str(name)
-        confidence_ellipse(ax3, x=pole.poleLon, y=pole.rotRate*MASY2DMY, cov=cov, n_std=n_std,
-                           edgecolor=color, facecolor=color, label=label, **kwargs)
-    ax3.tick_params(axis="y",direction="in", pad=-32)
-    ax3.tick_params(axis="x",direction="in")
-    ax3.xaxis.set_ticks_position('both')
-    ax3.yaxis.set_ticks_position('both')
-    ax3.yaxis.set_label_position("right")
-    ax3.tick_params(labeltop=False, labelbottom=True, labelleft=False, labelright=True)
-    ax3.set_xlabel('Longitude [deg]')
-    ax3.set_ylabel('Rate [deg/Ma]', labelpad=-48)
-    ax3.yaxis.set_major_formatter('{x:.2f}')
 
-    # adjust and show
+        if isinstance(n_std, (list,np.ndarray)):
+            for i in range(len(n_std)):
+                ci = tweak_color(color, luminos=(i+1)/len(n_std))
+                ell = draw_confidence_ellipse(ax3, x=pole.poleLon, y=pole.rotRate*MASY2DMY, cov=cov, n_std=n_std[i],
+                                         color=ci, elp_lw=elp_lw, elp_alpha=elp_alpha, print_msg=False)
+        else:
+            ell = draw_confidence_ellipse(ax3, x=pole.poleLon, y=pole.rotRate*MASY2DMY, cov=cov, n_std=n_std,
+                                         color=color, elp_lw=elp_lw, elp_alpha=elp_alpha, print_msg=False)
+
+    ax3.tick_params(axis="both", direction="in", width=tickw, labeltop=False, labelbottom=True, labelleft=True, labelright=False)
+    ax3.xaxis.set_ticks_position('both'); ax3.xaxis.set_label_position("bottom")
+    ax3.yaxis.set_ticks_position('both'); ax3.yaxis.set_label_position("left")
+    ax3.set_xticks(x_ticks, labels=x_ticklabels)
+    ax3.yaxis.set_major_locator(locator)
+    if lon_label is not None:
+        ax3.set_xlabel(lon_label)
+    if rot_label is not None:
+        ax3.set_ylabel(rot_label)
+
+
+    # adjust axes
+    ax1.tick_params(axis="both", direction="in", width=tickw, labeltop=False, labelbottom=False, labelleft=False, labelright=False)
     plt.subplots_adjust(hspace=.05)
     plt.subplots_adjust(wspace=.05)
-    [ll.set_linewidth(1.5) for ll in ax1.spines.values()]
-    [ll.set_linewidth(1.5) for ll in ax2.spines.values()]
-    [ll.set_linewidth(1.5) for ll in ax3.spines.values()]
-    return fig, (ax1, ax2, ax3)
+    [ll.set_linewidth(tickw) for ll in ax1.spines.values()]
+    [ll.set_linewidth(tickw) for ll in ax2.spines.values()]
+    [ll.set_linewidth(tickw) for ll in ax3.spines.values()]
+
+    # ccrs feature to axis 1
+    kwargs = update_kwargs(kwargs)
+    ax1.add_feature(cfeature.COASTLINE, ec='k'   , lw=0.6)
+    ax1.add_feature(cfeature.BORDERS  , ec='gray', lw=0.1)
+    ax1.add_feature(cfeature.OCEAN    , fc=kwargs['c_ocean'])
+    ax1.add_feature(cfeature.LAKES    , fc=kwargs['c_ocean'])
+    ax1.add_feature(cfeature.LAND     , fc=kwargs['c_land'])
+
+    return fig, (ax1, ax2, ax3), leg
 
 
 ###############  plate motion plotting  ###################
@@ -505,21 +815,22 @@ def read_plate_outline( pmm_name   : str  | None = 'GSRM',
                     vertices.append(vert)
 
     # outline of a specific plate
-    if plate_name is not None:
+    if plate_name is None:
+        return outlines
+
+    else:
         if plate_name in outlines.keys():
             # convert list into shapely polygon object for easy use
             outline = geometry.Polygon(outlines[plate_name])
+            return outline
+
         else:
-            if pmm_dict:
+            if pmm_dict and plate_name in pmm_dict.keys():
                 plate_abbrev = pmm_dict[plate_name].Abbrev
             else:
                 plate_abbrev = '-'
-            raise ValueError(f'Can NOT found plate {plate_name} ({plate_abbrev}) in file: {plate_boundary_file}!')
-
-    else:
-        outline = outlines
-
-    return outline
+            print(f'Can NOT find plate "{plate_name}" ({plate_abbrev}) in file: {plate_boundary_file}!')
+            return None
 
 
 ## Map extent for showing two or more poles together
@@ -591,27 +902,30 @@ def sample_coords_within_polygon( polygon_obj : object,
 
 def update_kwargs(kwargs : dict) -> dict:
     # default plot settings
-    kwargs['c_ocean']     = kwargs.get('c_ocean', 'w')
-    kwargs['c_land']      = kwargs.get('c_land', 'lightgray')
-    kwargs['c_plate']     = kwargs.get('c_plate', 'mistyrose')
-    kwargs['lw_coast']    = kwargs.get('lw_coast', 0.0)
-    kwargs['lw_pbond']    = kwargs.get('lw_pbond', 1)
-    kwargs['lc_pbond']    = kwargs.get('lc_pbond', 'coral')
-    kwargs['alpha_plate'] = kwargs.get('alpha_plate', 0.4)
-    kwargs['grid_on']     = kwargs.get('grid_on', '--')
-    kwargs['grid_ls']     = kwargs.get('grid_ls', '--')
-    kwargs['grid_lw']     = kwargs.get('grid_lw', 0.3)
-    kwargs['grid_lc']     = kwargs.get('grid_lc', 'gray')
-    kwargs['qnum']        = kwargs.get('qnum', 6)
-    kwargs['font_size']   = kwargs.get('font_size', 12)
+    kwargs['c_ocean']     = kwargs.get('c_ocean'    , 'w'        )
+    kwargs['c_land']      = kwargs.get('c_land'     , 'gainsboro')
+    kwargs['c_plate']     = kwargs.get('c_plate'    , 'w'        )
+    kwargs['lw_coast']    = kwargs.get('lw_coast'   , 0.3        )
+    kwargs['lw_border']   = kwargs.get('lw_border'  , 0.15       )
+    kwargs['lw_pbond']    = kwargs.get('lw_pbond'   , 1.4        )
+    kwargs['ls_pbond']    = kwargs.get('ls_pbond'   , '--'       )
+    kwargs['lc_pbond']    = kwargs.get('lc_pbond'   , 'k'        )
+    kwargs['alpha_plate'] = kwargs.get('alpha_plate', 0.4        )
+    kwargs['grid_ls']     = kwargs.get('grid_ls'    , '--'       )
+    kwargs['grid_lw']     = kwargs.get('grid_lw'    , 0.3        )
+    kwargs['grid_lc']     = kwargs.get('grid_lc'    , 'gray'     )
+    kwargs['grid_dx']     = kwargs.get('grid_dx'    , 10.        )
+    kwargs['grid_dy']     = kwargs.get('grid_dy'    , 10.        )
+    kwargs['qnum']        = kwargs.get('qnum'       , 6          )
+    kwargs['font_size']   = kwargs.get('font_size'  , 12         )
 
     # point of interest
-    kwargs['pts_lalo']    = kwargs.get('pts_lalo', None)
-    kwargs['pts_marker']  = kwargs.get('pts_marker', '^')
-    kwargs['pts_ms']      = kwargs.get('pts_ms', 20)
-    kwargs['pts_mfc']     = kwargs.get('pts_mfc', 'r')
-    kwargs['pts_mec']     = kwargs.get('pts_mec', 'k')
-    kwargs['pts_mew']     = kwargs.get('pts_mew', 1)
+    kwargs['pts_lalo']    = kwargs.get('pts_lalo'   , None       )
+    kwargs['pts_marker']  = kwargs.get('pts_marker' , '^'        )
+    kwargs['pts_ms']      = kwargs.get('pts_ms'     , 20         )
+    kwargs['pts_mfc']     = kwargs.get('pts_mfc'    , 'r'        )
+    kwargs['pts_mec']     = kwargs.get('pts_mec'    , 'k'        )
+    kwargs['pts_mew']     = kwargs.get('pts_mew'    , 1          )
     return kwargs
 
 
@@ -638,7 +952,7 @@ def plot_basemap( plate_boundary   : object,
                 qcolor           - str, quiver color
                 unit             - str, {'mm','cm','m'} of the plate motion vector
                 figsize          - figure size
-                ax               - matplotlib axis
+                ax               - matplotlib figure and axis
                 kwargs           - dict, dictionary for plotting
     Returns:    ax               - matplotlib figure and axes objects
     Examples:
@@ -657,12 +971,7 @@ def plot_basemap( plate_boundary   : object,
         ax = euler_pole.plot_plate_motion(plate_boundary, epole_obj)
         plt.show()
     """
-    import matplotlib.ticker as mticker
-    from cartopy.mpl.ticker import (LongitudeFormatter, LatitudeFormatter,
-                                    LatitudeLocator, LongitudeLocator)
-
     kwargs = update_kwargs(kwargs)
-
 
     if plate_boundary:
         bnd_centroid = np.array(plate_boundary.centroid.coords)[0]
@@ -701,47 +1010,66 @@ def plot_basemap( plate_boundary   : object,
 
     # make a base map from cartopy
     if ax is None:
-        fig, ax = plt.subplots(figsize=figsize, subplot_kw=dict(projection=map_proj))
+        fig, ax = plt.subplots(figsize=figsize, layout="constrained", subplot_kw=dict(projection=map_proj))
 
     # map extent & grids
     if map_style == 'globe':
         # make the map global rather than have it zoom in to the extents of any plotted data
+        ax = update_axis_projection(ax, map_proj)
         ax.set_global()
-        if kwargs['grid_on']:
+        if float(kwargs['grid_lw']) > 0:
+            dx = float(kwargs['grid_dx'])
+            dy = float(kwargs['grid_dy'])
             gl = ax.gridlines(crs=ccrs.PlateCarree(),
                             color=kwargs['grid_lc'],
                             linestyle=kwargs['grid_ls'],
                             linewidth=kwargs['grid_lw'],
-                            xlocs=np.arange(-180,180,10),
-                            ylocs=np.arange(-80,81,10),
+                            xlocs=np.arange(-180,180,dx),
+                            ylocs=np.arange(-80,81,dy),
                             )
     elif map_style == 'platecarree':
         ax.set_extent(extent, crs=map_proj)
-        if kwargs['grid_on']:
+        if float(kwargs['grid_lw']) > 0:
+            locator = mticker.MaxNLocator(nbins=5, steps=[1,2,4,5,10], prune='both')
             gl = ax.gridlines(crs=ccrs.PlateCarree(),
                             color=kwargs['grid_lc'],
                             draw_labels=True,
                             linestyle=kwargs['grid_ls'],
                             linewidth=kwargs['grid_lw'],
-                            xlocs=mticker.MaxNLocator(4),
-                            ylocs=mticker.MaxNLocator(4),
+                            xlocs=locator,
+                            ylocs=locator,
                             xformatter=LongitudeFormatter(),
                             yformatter=LatitudeFormatter(),
                             )
             gl.top_labels  = False
             gl.left_labels = False
 
-    # cartopy features
-    ax.add_feature(cfeature.OCEAN, color=kwargs['c_ocean'])
-    ax.add_feature(cfeature.LAND,  color=kwargs['c_land'])
-    ax.add_feature(cfeature.COASTLINE, linewidth=kwargs['lw_coast'])
+            # Get the tick locations
+            x_ticks = gl.xlocator.tick_values(*ax.get_xlim())
+            y_ticks = gl.ylocator.tick_values(*ax.get_ylim())
+            ax.set_xticks(x_ticks, crs=ccrs.PlateCarree())
+            ax.set_yticks(y_ticks, crs=ccrs.PlateCarree())
+            ax.xaxis.set_ticklabels([])
+            ax.yaxis.set_ticklabels([])
+            ax.tick_params(axis="y",direction="in", pad=-32)
+            ax.tick_params(axis="x",direction="in")
+            ax.xaxis.set_ticks_position('both')
+            ax.yaxis.set_ticks_position('both')
+            ax.add_feature(cfeature.COASTLINE, color='k', lw=0.6)
 
-    # add the plate polygon
+    # cartopy features
+    ax.add_feature(cfeature.COASTLINE, ec='k'   , lw=kwargs['lw_coast'])
+    ax.add_feature(cfeature.BORDERS  , ec='gray', lw=kwargs['lw_border'])
+    ax.add_feature(cfeature.OCEAN    , fc=kwargs['c_ocean'], zorder=0.8)
+    ax.add_feature(cfeature.LAKES    , fc=kwargs['c_ocean'], zorder=0.8)
+    ax.add_feature(cfeature.LAND     , fc=kwargs['c_land'] , zorder=0.8)
+
+    # plot plate boundary polygon
     if plate_boundary:
         poly_lats = np.array(plate_boundary.exterior.coords)[:, 0]
         poly_lons = np.array(plate_boundary.exterior.coords)[:, 1]
         # ccrs.Geodetic()
-        ax.plot(poly_lons, poly_lats, color=kwargs['lc_pbond'], transform=ccrs.PlateCarree(), linewidth=kwargs['lw_pbond'])
+        ax.plot(poly_lons, poly_lats, color=kwargs['lc_pbond'], transform=ccrs.PlateCarree(), linewidth=kwargs['lw_pbond'], linestyle=kwargs['ls_pbond'])
         ax.fill(poly_lons, poly_lats, color=kwargs['c_plate'],  transform=ccrs.PlateCarree(), alpha=kwargs['alpha_plate'])
         # overlap the extent of interest and plate
         polygon = plate_boundary.intersection(extentPoly)
@@ -760,32 +1088,35 @@ def plot_basemap( plate_boundary   : object,
 
 def plot_plate_motion( plate_boundary   : object,
                        map_style        : str                  | None = 'globe',
-                       center_lalo      : tuple                | None = None,
-                       satellite_height : float                | None = 1e6,
+                       center_lalo      : tuple                | None = None,  # deg
+                       satellite_height : float                | None = 1e6,   # meter
                        extent           : list  | tuple        | None = None,
                        ax               : matplotlib.axes.Axes | None = None,
                        figsize          : list  | tuple        | None = [5, 5],
                        epole_obj        : object               | None = None,
+                       compare_duel     : bool                 | None = None,
                        orb              : bool                 | None = True,
                        helmert          : dict                 | None = False,
-                       Ve               : list                 | None = None,
-                       Vn               : list                 | None = None,
-                       Lats             : list                 | None = None,
-                       Lons             : list                 | None = None,
-                       qscale           : float                | None = 200,
-                       qunit            : float                | None = 50,
+                       Ve               : list                 | None = None,   # meter/yr
+                       Vn               : list                 | None = None,   # meter/yr
+                       Lats             : list                 | None = None,   # deg
+                       Lons             : list                 | None = None,   # deg
+                       unit             : str                  | None = 'mm',   # mm
+                       qunit            : float                | None = 50,     # 50 * 'unit'
+                       qscale           : float                | None = 1.0,
                        qwidth           : float                | None = .0075,
                        qcolor           : list[str]   | str    | None = 'coral',
                        qalpha           : list[float] | float  | None = 1.,
                        qname            : list[str]   | str    | None = None,
-                       unit             : str                  | None = 'mm',
+                       quiverlegend     : bool                 | None = True,
                        **kwargs,
                        ) -> tuple :
 
 
     kwargs = update_kwargs(kwargs)
 
-    # multi src plots:
+    # multi poles plots:
+    N = 0  # default no show any pole/velo
     if epole_obj is not None:
         if not isinstance(epole_obj, list): epole_obj = [epole_obj]
         pole_lalo = np.array([epole_obj[0].poleLat, epole_obj[0].poleLon])
@@ -810,13 +1141,29 @@ def plot_plate_motion( plate_boundary   : object,
                                satellite_height=satellite_height, extent=extent, ax=ax, figsize=figsize, **kwargs)
 
 
-    if all(_inp is not None for _inp in (Ve, Vn, Lats, Lons)):
-        # VECTORS from : input Ve Vn lists
-        print('you gave me ve vn, plot from input vectors')
+    # save input v
+    ve_in = np.array(Ve) if Ve is not None else None
+    vn_in = np.array(Vn) if Vn is not None else None
+
+
+    if all(_inp is not None for _inp in (Ve, Vn, Lats, Lons)) and (len(Ve)==N):
+        # VECTORS from : input locations and velocities
+        print('plot input {lat, lon, ve, vn}')
+
+    elif all(_inp is not None for _inp in (Lats, Lons)) and (epole_obj is not None):
+        # VECTORS from : input locations and pole-predicted velocities
+        print('plot {ve,vn} est from {lat,lon}')
+        Ve   = []
+        Vn   = []
+        for j, (epole, helm) in enumerate(zip(epole_obj, helmert)):
+            # calculate plate motion on sample points
+            _ve, _vn = epole.get_velocity_enu(lat=Lats[j], lon=Lons[j], orb=orb, helmert=helm)[:2]
+            Ve.append(_ve)
+            Vn.append(_vn)
 
     elif epole_obj is not None:
-        # VECTORS from : input pole lists
-        print('plot from poles')
+        # VECTORS from : arbitrary gridded locations and pole-predicted velocities
+        print('plot {ve,vn} est from some regular grids, qnum=', kwargs['qnum'])
         Lats = []
         Lons = []
         Ve   = []
@@ -827,36 +1174,101 @@ def plot_plate_motion( plate_boundary   : object,
 
             # calculate plate motion on sample points
             _ve, _vn = epole.get_velocity_enu(lat=_lats, lon=_lons, orb=orb, helmert=helm)[:2]
-
             Ve.append(_ve)
             Vn.append(_vn)
             Lats.append(_lats)
             Lons.append(_lons)
 
 
-    for j, (ve, vn, lats, lons, qc, qa) in enumerate(zip(Ve, Vn, Lats, Lons, qcolor, qalpha)):
-        # scale the vector unit
-        if   unit == 'mm':  ve = np.array(ve)*1e3; vn = np.array(vn)*1e3
-        elif unit == 'cm':  ve = np.array(ve)*1e2; vn = np.array(vn)*1e2
+    # check if there is a 3rd guy (i assume that is your GPS) to plot
+    # if yes, keep the 1st and the 3rd guys for comparison
+    if compare_duel is not None and ve_in is not None:
+        if (len(compare_duel)==3):
+            print(f'plot the first pole_pred {compare_duel[0]} and your input GPS {compare_duel[2]}')
+            Ve    = [Ve[0]]    + [ve_in]
+            Vn    = [Vn[0]]    + [vn_in]
+            qname = [qname[0]] + [compare_duel[2]]
+            Lats  = [Lats[0]] * 2
+            Lons  = [Lons[0]] * 2
 
-        if True:
-            # correcting for "East" further toward polar region; re-normalize ve, vn
-            norm = np.sqrt(ve**2 + vn**2)
-            ve /= np.cos(np.deg2rad(lats))
-            renorm = np.sqrt(ve**2 + vn**2)/norm
-            ve /= renorm
-            vn /= renorm
 
-        # ---------- plot inplate vectors --------------
-        q = ax.quiver(lons, lats, ve, vn, transform=ccrs.PlateCarree(), scale=qscale, width=qwidth, color=qc, angles="xy", alpha=qa, zorder=3)
-        if j==0:
-            ax.quiverkey(q, X=0.1, Y=0.1, U=qunit, label=f'{qunit} {unit}/yr', labelpos='S', coordinates='axes', color='k', fontproperties={'size':kwargs['font_size']}, zorder=10)
+    if unit == 'mm':
+        factor = 1e3
+    elif unit == 'cm':
+        factor = 1e2
+    else:
+        unit = 'meter'
+        factor = 1.
+    qscale *= factor
 
-    # quiver lines legend
-    if qname is not None:
-        from matplotlib.lines import Line2D
-        lines = [Line2D([0], [0], color=qc, linewidth=3, linestyle='-') for qc in qcolor]
-        ax.legend(lines, qname, loc='lower right', fontsize=kwargs['font_size'])
+
+    # compare the first two pole
+    if compare_duel is not None and len(epole_obj)>=2:
+        rmse = ut.calc_wrms(Ve[0]-Ve[1])
+        rmsn = ut.calc_wrms(Vn[0]-Vn[1])
+        show_str = fr'$RMS_e=${rmse*1e3:.3f} mm/yr' + '\n' + fr'$RMS_n=${rmsn*1e3:.3f} mm/yr'
+        ax.annotate(show_str, xy=(1,.97), xycoords='axes fraction', fontsize=12, annotation_clip=False, ha='right', va='top',
+                    bbox=dict(facecolor='white', alpha=0.85, edgecolor='black', boxstyle='round,pad=0.2'), zorder=20)
+
+
+    # arrows
+    Q, Qk = [], []
+    if all(_inp is not None for _inp in (Ve, Vn, Lats, Lons)):
+
+        # Zip the lists together
+        zipped = list(zip(Ve, Vn, Lats, Lons, qcolor, qalpha, qname))
+
+        # iterate over the reversed enumeration (plot arrows InSAR at front)
+        for j, (ve, vn, lats, lons, qc, qa, qn) in enumerate(reversed(zipped)):
+            # scale the vector unit
+            ve = np.array(ve) * factor
+            vn = np.array(vn) * factor
+
+            if True:
+                # correcting for "East" further toward polar region; re-normalize ve, vn
+                norm = np.sqrt(ve**2 + vn**2)
+                ve /= np.cos(np.deg2rad(lats))
+                renorm = np.sqrt(ve**2 + vn**2)/norm
+                ve /= renorm
+                vn /= renorm
+
+            # ---------- plot inplate vectors --------------
+            if 'qec' in kwargs:
+                qec = kwargs.get('qec', 'k')
+                qlw = kwargs.get('qlw', 1)
+                q = ax.quiver(lons, lats, ve, vn,
+                            scale=qscale, width=qwidth, facecolor=qc,
+                            edgecolor=qec, lw=qlw,
+                            angles="xy", alpha=qa, zorder=3,
+                            transform=ccrs.PlateCarree(),
+                            )
+            else:
+                q = ax.quiver(lons, lats, ve, vn,
+                            scale=qscale, width=qwidth, color=qc,
+                            angles="xy", alpha=qa, zorder=3,
+                            transform=ccrs.PlateCarree(),
+                            )
+
+            if 'qkX' not in kwargs:
+                X, Y, qkstep = None, None, None
+            else:
+                X, Y, qkstep = kwargs['qkX'], kwargs['qkY'], kwargs['qkstep']
+
+            if any(var is None for var in [X, Y, qkstep]):
+                X, Y, qkstep = 0.4, -0.158, -0.076
+
+            if quiverlegend:
+                qk = ax.quiverkey(q, X=X, Y=Y+qkstep*(j+1), U=-qunit,
+                                label=qn, coordinates='axes',
+                                labelpos='E', labelsep=0.5,
+                                fontproperties={'size':kwargs['font_size']},
+                                )
+                Qk.append(qk)
+            Q.append(q)
+
+        if quiverlegend:
+            ax.text(X, Y, f'Plate motion ({qunit} {unit}/yr)',
+                    clip_on=False, transform=ax.transAxes)
     #-----------------------------------------------------------
 
-    return ax
+    return ax, Q, Qk

@@ -12,13 +12,15 @@
     author: Yuan-Kai Liu  2023-2024
 """
 
+import os
 import sys
 import copy
+import pickle, glob
+from pathlib import Path
+
 import scipy
 import numpy as np
 from matplotlib import pyplot as plt
-
-from skimage.transform import downscale_local_mean
 
 # cartopy plots
 import pyproj
@@ -28,7 +30,7 @@ from cartopy import crs as ccrs, feature as cfeature
 # PyPMM modules
 from pypmm.euler_pole import EulerPole
 from pypmm.plot_utils import plot_imshow
-from pypmm.models import MAS2RAD, MASY2DMY
+from pypmm.models import MAS2RAD, MASY2DMY, EARTH_RADIUS_A
 from pypmm import utils as ut
 
 plt.rcParams.update({'font.size'  : 14,
@@ -118,49 +120,51 @@ class blockModel:
         vprint = print if print_msg else lambda *args, **kwargs: None
 
         # basics
-        self.names        = []
-        self.N_set        = []
-        self.dComp_set    = []
-        self.subtract_ref = False
-        self.bias         = False
-        self.bias_comp    = 1
+        self.names        = []          # name of dataset
+        self.N_set        = []          # number of samples
+        self.Comp_set     = []          # 'en','los','azi','azimuth','rg','range'
+        self.dComp_set    = []          #   -> number of components
+        self.subtract_ref = False       # reference the G matrix at ref point
+        self.bias         = False       # estimate the bias term (DC shift)
+        self.bias_comp    = 1           # number of bias components
 
-        # design matrices
-        self.Gc_set   = []
-        self.T_set    = []
-        self.L_set    = []
-        self.G_set    = []
-        self.d_set    = []
+        # least-squares matrices
+        self.Gc_set   = []              # cross-product matrix
+        self.T_set    = []              # XYZ to ENU transform matrix
+        self.L_set    = []              # ENU to LOS projection matrix
+        self.G_set    = []              # Combine the above three
+        self.d_set    = []              # dataset 1-D array
 
         # 1d array like
-        self.std_set  = []
-        self.lats_set = []
-        self.lons_set = []
-        self.los_inc_angle_set = []
-        self.los_azi_angle_set = []
-        self.ref_los_vec_set   = []
-        self.ref_lalo_set      = []
-        self.ref_yx_set        = []
+        self.std_set  = []              # data standard dev 1-D array
+        self.lats_set = []              # latitude of samples
+        self.lons_set = []              # longitude of samples
+        self.los_inc_angle_set = []     # incidence angle
+        self.los_azi_angle_set = []     # azimuth angle
+        self.ref_los_vec_set   = []     # ref point LOS unit vector
+        self.ref_lalo_set      = []     # ref point lat and lon
+        self.ref_yx_set        = []     # ref point x and y
+        self.ref_row_set       = []     # ref point row in its G matrix
 
         # 2D matrix as roi masks
-        self.roi_set  = []
-        self.Obs_set  = []
-        self.Std_set  = []
-        self.Lats_set = []
-        self.Lons_set = []
+        self.roi_set  = []              # roi mask
+        self.Obs_set  = []              # data as image
+        self.Std_set  = []              # std as image
+        self.Lats_set = []              # lat as image
+        self.Lons_set = []              # lon as image
 
         # model params
-        self.m_all = 0
-        self.e2    = 0
-        self.rank  = 0
-        self.singv = 0
-        self.cond  = 0
-        self.Cm    = 0
-        self.m_std = 0
+        self.m_all = 0                  # model params
+        self.e2    = 0                  # ||Gm-d||2^2
+        self.rank  = 0                  # rank of G
+        self.singv = 0                  # singular values of G
+        self.cond  = 0                  # condition number of G
+        self.Cm    = 0                  # covariance matrix of model params
+        self.m_std = 0                  # std of model params
 
         # covariance matrix
-        self.Cds_set = []
-        self.Cov = []
+        self.Cds_set = []               # data spatial covariance matrix
+        self.Cx = []                    # total covariance for inversion
 
         # user input priors (nans will be filled with inversion results)
         self.DCs   = []
@@ -171,21 +175,18 @@ class blockModel:
         # add track name if given
         if name is not None: self.names.append(name); vprint(f'add dataset {name}')
 
-        # num of comp. of input data
-        self.comp = comp
-
         # initalize null inputs
         shapes = lats.shape
-        if data is None: data = np.full(shapes, np.nan); vprint('No data is supplied, set to nan')
-        if roi  is None:  roi = np.full(shapes,   True); vprint('No  roi is supplied, set all to True')
-        if std  is None:  std = np.full(shapes,    1.0); vprint('No  std is supplied, set all to unity 1.0')
+        if data is None: data = np.full(shapes, np.nan); vprint('No data is defined, set to nan')
+        if roi  is None:  roi = np.full(shapes,   True); vprint('No  roi is defined, set all to True')
+        if std  is None:  std = np.full(shapes,    1.0); vprint('No  std is defined, set all to unity 1.0')
 
         # single float
         if isinstance(los_inc_angle, float): los_inc_angle = np.full(shapes, los_inc_angle)
         if isinstance(los_azi_angle, float): los_azi_angle = np.full(shapes, los_azi_angle)
 
         vprint(f'flatten data {shapes} to a 1D array')
-        self.add_data_array(data[roi], lats[roi], lons[roi], std[roi], los_inc_angle[roi], los_azi_angle[roi])
+        self.add_data_array(data[roi], lats[roi], lons[roi], std[roi], los_inc_angle[roi], los_azi_angle[roi], comp=comp)
         self.roi_set.append(roi)
         self.Obs_set.append(data)
         self.Std_set.append(std)
@@ -193,31 +194,38 @@ class blockModel:
         self.Lons_set.append(lons)
 
         # ref. point los info
-        ref_los_vec = kwargs.get('ref_los_vec')
-        ref_lalo    = kwargs.get('ref_lalo')
-        ref_yx      = kwargs.get('ref_yx')
-        self.ref_los_vec_set.append(np.array(ref_los_vec))
-        self.ref_lalo_set.append(np.array(ref_lalo))
-        self.ref_yx_set.append(np.array(ref_yx))
+        ref_yx      = kwargs.get('ref_yx')      if kwargs.get('ref_yx')      is not None else (np.nan, np.nan)
+        ref_lalo    = kwargs.get('ref_lalo')    if kwargs.get('ref_lalo')    is not None else (np.nan, np.nan)
+        ref_los_vec = kwargs.get('ref_los_vec') if kwargs.get('ref_los_vec') is not None else (np.nan, np.nan, np.nan)
+        self.ref_yx_set.append(ref_yx)
+        self.ref_lalo_set.append(ref_lalo)
+        self.ref_los_vec_set.append(ref_los_vec)
+        if ref_yx==(np.nan, np.nan) or len(shapes)==1:
+            self.ref_row_set.append(np.nan)
+        else:
+            ref_idx = ref_yx[0]*shapes[1] + ref_yx[1]
+            ref_row = ut.get_masked_index(roi.flatten(), ref_idx)
+            self.ref_row_set.append(ref_row)
 
 
     def add_gps(self, data, lats, lons, std=None, name=None, comp='en'):
         """Add 2-comp or 3-comp GPS data, std, site names
         data : dim=(N by C) , N=num of stations , C={e,n}
         """
-        self.comp = comp
 
         # add site names if given
         if name is not None: self.names.append(name); vprint(f'add gps sites {name}')
 
         # add gps data
-        self.add_data_array(data, lats, lons, std)
+        self.add_data_array(data, lats, lons, std, comp=comp)
 
 
-    def add_data_array(self, data, lats, lons, std=None, los_inc_angle=None, los_azi_angle=None):
+    def add_data_array(self, data, lats, lons, std=None, los_inc_angle=None, los_azi_angle=None, comp='los'):
         # check data dimension
-        if   self.comp == 'los': dim_c = 1
-        elif self.comp == 'en' : dim_c = 2
+        if   comp in ['los','azi','azimuth','rg','range']: dim_c = 1
+        elif comp == 'en' : dim_c = 2
+        vprint(f' data component type: {comp}')
+        self.Comp_set.append(comp)
 
         # make sure dim = (N by C)
         data = data.reshape(-1, dim_c)
@@ -279,13 +287,23 @@ class blockModel:
     def build_L(self):
         # enu2los: v_los = L @ v_enu
         # where L is the line-of-sight projection operation
-        for k, N in enumerate(self.N_set):
+        # can also be other projections
+        for k, (N, comp) in enumerate(zip(self.N_set, self.Comp_set)):
             los_inc_angle = self.los_inc_angle_set[k]
             los_azi_angle = self.los_azi_angle_set[k]
-            L = np.array(ut.get_unit_vector4component_of_interest(los_inc_angle=los_inc_angle,
-                                                                  los_az_angle=los_azi_angle)).T
+
+            if comp.lower().startswith('az'):
+                comp = 'en2az'
+            elif comp.lower().startswith('los'):
+                comp = 'enu2los'
+            else:
+                sys.exit(f'cannot recognize the component string: {comp}')
+
+            L = np.array(ut.get_unit_vector4component_of_interest(los_inc_angle = los_inc_angle,
+                                                                  los_az_angle  = los_azi_angle,
+                                                                  comp          = comp)).T
             self.L_set.append(L)
-            vprint('built L shape', L.shape)
+            vprint(f'built L shape {L.shape} {comp}')
         vprint('~')
 
 
@@ -306,6 +324,11 @@ class blockModel:
             else:
                 for i in range(N//dComp):
                     G[i*dComp:(i+1)*dComp, :] = (T[i] @ Gc[i])[:dComp]
+
+            # normalize the G matrix with radius
+            if not self.bias:
+                self.Gnorm = EARTH_RADIUS_A
+                G /= self.Gnorm
 
             self.G_set.append(G)
             vprint('built G shape', G.shape)
@@ -372,34 +395,34 @@ class blockModel:
         + can do this step several times if you modify the dataset
           it will just overwrite the *_all matrices
         """
-        for k, (G, d, std, roi, refyx) in enumerate(zip(self.G_set,
-                                                        self.d_set,
-                                                        self.std_set,
-                                                        self.roi_set,
-                                                        self.ref_yx_set)):
+        self.subtract_ref = subtract_ref
+
+        for k, (G, d, std) in enumerate(zip(self.G_set,
+                                            self.d_set,
+                                            self.std_set)):
+            try:
+                vprint(f'reference G matrix: {subtract_ref}  REF_YX: {self.ref_yx_set[k]}')
+            except:
+                vprint('no reference info found')
+
             # reference Gm=d at the reference point
-            self.subtract_ref = subtract_ref
-            if subtract_ref:
-                width = roi.shape[1]
-                ref_idx = refyx[0] * width + refyx[1]
-                ref_row = ut.get_masked_index(roi.flatten(), ref_idx)
-                print(f'putting Gm=d referenced to {refyx}, data={d[ref_row]}')
-                G -= G[ref_row, :]
+            if (subtract_ref) and (self.ref_yx_set[k]!=(np.nan,np.nan)):
+                refyx   = self.ref_yx_set[k]
+                ref_row = self.ref_row_set[k]
+                G  -= G[ref_row, :]
                 G   = np.delete(G,   ref_row, axis=0)
                 d   = np.delete(d,   ref_row, axis=0)
                 std = np.delete(std, ref_row, axis=0)
 
-
+            # stack the matrices
             if k == 0:
                 G_all   = np.array(G)
                 d_all   = np.array(d.reshape(-1,1))
                 std_all = np.array(std.reshape(-1,1))
-
             else:
                 G_all   = np.vstack([G_all  , G])
                 d_all   = np.vstack([d_all  , d.reshape(-1,1)])
                 std_all = np.vstack([std_all, std.reshape(-1,1)])
-
 
         self.G_all   = np.array(G_all)
         self.d_all   = np.array(d_all)
@@ -410,13 +433,38 @@ class blockModel:
         vprint('~')
 
 
-    def add_GNSS2insar(self, lalo, venu, senu):
-        # coordinates
-        lat, lon = lalo
+    def add_gps2insar(self, lat, lon, ve, vn, vu=None, se=None, sn=None, su=None, name='gps'):
+        # add site names if given
+        if name is not None: self.names.append(name); vprint(f'add gps sites {name}')
 
-        # 2-comp GNSS data
-        d = np.array(venu).reshape(-1,1)
-        s = np.array(senu).reshape(-1,1)
+        N = len(lat)
+
+        if vu is None:
+            dComp = 2
+            comp = 'en'
+            if se is None: se = np.zeros_like(ve)
+            if sn is None: sn = np.zeros_like(vn)
+            d = np.column_stack([ve, vn]).reshape(-1,1)
+            s = np.column_stack([se, sn]).reshape(-1,1)
+
+            L = np.array([[1,0,0],   # dummy LOS projection vector
+                          [0,1,0],
+                          ])
+        else:
+            dComp = 3
+            comp = 'enu'
+            if se is None: se = np.zeros_like(ve)
+            if sn is None: sn = np.zeros_like(vn)
+            if su is None: su = np.zeros_like(vu)
+            d = np.column_stack([ve, vn, vu]).reshape(-1,1)
+            s = np.column_stack([se, sn, su]).reshape(-1,1)
+
+            L = np.array([[1,0,0],   # dummy LOS projection vector
+                          [0,1,0],
+                          [0,0,1]
+                          ])
+
+        L = np.stack([L]*N)
 
         # cross product to vxyz
         x, y, z = ut.T_llr2xyz(lat, lon)
@@ -425,22 +473,28 @@ class blockModel:
         # xyz transf to ENU
         T = ut.R_xyz2enu(lat=lat, lon=lon)
 
-        # LOS geometry for ENU comps
-        if len(venu) == len(senu) == 2:
-            L = np.array([[1,0,0],
-                          [0,1,0],
-                          ])
 
-        elif len(venu) == len(senu) == 3:
-            L = np.array([[1,0,0],
-                          [0,1,0],
-                          [0,0,1]
-                          ])
+        # G matrix for gps
+        G = L @ T @ C
 
-        # G
-        G = L.reshape(-1,3) @ T @ C
+        # reshape the en components to 1d
+        G = G.reshape(-1,3)
 
-        # add to system
+        # normalize the G matrix with radius
+        if not self.bias: G /= self.Gnorm
+
+        # add to dataset
+        self.N_set.append(N)
+        self.Comp_set.append(comp)
+        self.dComp_set.append(dComp)
+        self.d_set.append(d.flatten())
+        self.std_set.append(s.flatten())
+        self.lats_set.append(lat)
+        self.lons_set.append(lon)
+        self.los_inc_angle_set.append(None)
+        self.los_azi_angle_set.append(None)
+
+        # add to the big system
         nbias = self.G_all.shape[1] - G.shape[1]
         G = np.hstack([G, np.zeros([G.shape[0], nbias])])
         self.G_all   = np.vstack([self.G_all,   G])
@@ -459,22 +513,140 @@ class blockModel:
         """
         # insert Cd_s from your input Cds_set
         if scaling_facs is None: scaling_facs = np.ones(len(Cds_set))
-        for i, (Cds, fac, roi, refyx) in enumerate(zip(Cds_set,
-                                                       scaling_facs,
-                                                       self.roi_set,
-                                                       self.ref_yx_set)):
-            if self.subtract_ref:
-                width = roi.shape[1]
-                ref_idx = refyx[0] * width + refyx[1]
-                ref_row = ut.get_masked_index(roi.flatten(), ref_idx)
+        for i, (Cds, fac, roi, refyx, ref_row) in enumerate(zip(Cds_set,
+                                                                scaling_facs,
+                                                                self.roi_set,
+                                                                self.ref_yx_set,
+                                                                self.ref_row_set)):
+            print(f'reference Cov matrix: {self.subtract_ref}  REF_YX: {refyx}')
+
+            if (self.subtract_ref) and (refyx!=(np.nan,np.nan)):
                 Cds = np.delete(Cds, ref_row, axis=0)   # remove refpoint row
                 Cds = np.delete(Cds, ref_row, axis=1)   # remove refpoint col
-                print(f'putting Gm=d and Covariance referenced to {refyx}')
 
             self.Cds_set.append(Cds * fac)
             print(f'appended Cd_s for dataset {i+1}/{len(Cds_set)}, scaling fac={fac}')
 
         print('done~')
+
+
+
+    def insert_Cps(self, mc_dir, m0=None, subset=None, savefile=False):
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from rotation import read_pole_files, full_Autocorrelation
+
+
+        print(f'Read model from realizations under : {mc_dir}')
+        path = Path(mc_dir)
+        in_files = sorted(glob.glob(str(path / 'ref*' / 'block.out')))
+        ms = read_pole_files(in_files, error='propagate')[6]
+
+        # sample mean model
+        if m0 is not None:
+            print(f'set sample prior model as: {m0}')
+        else:
+            m0 = np.mean(ms, axis=0)
+            print(f'compute sample mean model as: {m0}')
+
+        # allocate Cp for each dataset
+        Cp_set = []
+        for i, dd in enumerate(self.d_set):
+            Nsamp = len(dd)
+            Cp = np.full((Nsamp-1, Nsamp-1), 0.0)
+            Cp_set.append(Cp)
+        print(f'allocate Cp for dataset: {len(Cp_set)}')
+
+
+        # subset realizations
+        if subset is not None:
+            ms       =       ms[subset[0]:subset[1]]
+            in_files = in_files[subset[0]:subset[1]]
+
+
+
+        # realization #
+        L = 0
+        for l, (mi, file) in enumerate(zip(ms, in_files)):
+
+            # Read G from realization i
+            G_path = Path(file).parent
+            with open(G_path/'G.pkl', 'rb') as f:
+                G_reali = pickle.load(f)
+
+            # skip realization if G has missing samples
+            print(f'realization #{l}, N={len(G_reali)}')
+            L += 1
+
+
+            # get the original input G matrix (assume order is identical)
+            if self.subtract_ref:
+                ref_rows  = np.array(self.ref_row_set)
+                if len(self.N_set) > 1:
+                    ref_rows += np.cumsum(np.insert(np.array(self.N_set[:len(ref_rows)-1]), 0, 0))
+                ref_rows  = ref_rows[~np.isnan(ref_rows)].astype(int)
+                G_reali = np.insert(G_reali, ref_rows, [0.,0.,0.], axis=0)
+            else:
+                G_reali = G_reali
+
+
+            # each dataset, calc Cp indepentend from other datasets #
+            idx0 = 0
+            for i, (dd, G0, ref_row) in enumerate(zip(self.d_set,
+                                                    self.G_set,
+                                                    self.ref_row_set)):
+
+                if len(dd) == len(G0):
+                    pass
+                else:
+                    print('Sizes of data and G not matiching. Something wrong!')
+
+                # G_reali for single dataset
+                Nsamp = len(dd)
+
+                Gi = G_reali[idx0:idx0+Nsamp]
+                idx0 += Nsamp
+
+                print(' ', l, i, len(dd), len(G0), len(Gi))
+
+                # scale G back to original order of magnitude
+                Gi = np.array(Gi) * self.Gnorm
+                G0 = np.array(G0) * self.Gnorm
+
+                # take out ref_row
+                Gi -= Gi[ref_row]
+                G0 -= G0[ref_row]
+                Gi = np.delete(Gi, ref_row, axis=0)
+                G0 = np.delete(G0, ref_row, axis=0)
+
+                # sample prediction
+                di = Gi @ mi
+                d0 = G0 @ m0
+
+                # deviation from the mean model
+                din = di.flatten() - d0.flatten()
+
+                # compute autocorrelation, add to dataset Cp
+                Cp_set[i] += full_Autocorrelation(din)
+
+
+                # clean
+                del dd, G0, Gi, d0, di, din
+
+
+        print(f'Averaing the Cp across {L} realizations')
+        for i in np.arange(len(Cp_set)):
+            print(f' :: averaging dataset {i+1}')
+            Cp_set[i] =  Cp_set[i] / L
+
+        self.Cp_set = Cp_set
+
+        if savefile:
+            # Save the list of arrays to a .pkl file
+            with open(savefile, 'wb') as f:
+                pickle.dump(Cp_set, f)
+
+        return
+
 
 
     def Covariance(self, errname='Cdt', plot=False):
@@ -494,27 +666,45 @@ class blockModel:
 
         if errname == 'Cdt':
             # basic Cd (Cd temporal from insar and gps)
-            self.Cov = self.std_all**2
+            self.Cx = self.std_all**2
             pass
 
         elif errname in ['Cds','Cdts','Cx']:
-            if self.subtract_ref: del_row = 1
-            self.Cov = []
+            if self.subtract_ref:
+                del_row = 1
+            else:
+                del_row = 0
+
+            self.Cx = []
             n1 = 0
-            for i, n in enumerate(self.N_set):
-                n -= del_row
-                if (i <= len(self.Cds_set)-1) and (len(self.Cds_set[i])==n):
+            for i, (n, dComp) in enumerate(zip(self.N_set, self.dComp_set)):
+                if i <= len(self.Cds_set)-1:
                     Cds = self.Cds_set[i]
+                    if len(self.Cds_set[i]) == n-del_row:
+                        n -= del_row   # referenced insar data, update n
                 else:
-                    Cds = np.zeros((n,n), dtype=np.float32)
+                    # ignore spatial covariance when not finding the corresponding one: gps or synthetic sar
+                    print('ignore spatial covariance, fill with zeros')
+                    n *= dComp
+                    if dComp==1 and del_row!=0:
+                        # reference the sar data
+                        n -= del_row
+                    Cds = np.zeros((n,n), dtype=np.float64)
 
                 if errname == 'Cds':
-                    self.Cov.append(Cds)
+                    self.Cx.append(Cds)
+
                 elif errname == 'Cdts':
                     Cdt = np.diag(self.std_all[n1:n1+n].flatten())**2
-                    self.Cov.append(Cds + Cdt)
+                    self.Cx.append(Cdt + Cds)
+
                 elif errname == 'Cx':
-                    sys.exit('TBA, not supported now...')
+                    print('TESTING NOW, be careful!')
+
+                    Cdt = np.diag(self.std_all[n1:n1+n].flatten())**2
+                    Cp = self.Cp_set[i]
+
+                    self.Cx.append(Cdt + Cds + Cp)
 
                 n1 += n
 
@@ -525,11 +715,11 @@ class blockModel:
             return
 
 
-    def invert(self, errform='no', diagonalize=False, save=False):
+    def invert(self, errform='no', diagonalize=False, gpu_device=None, save=False, load=False):
         """invert for model params
         INPUTS:
 
-            errform - use of error model from reading the self.Cov
+            errform - use of error model from reading the self.Cx
                         'no'   - no errors
                         'diag' - diag uncorrelated error
                         'full' - full covariance
@@ -537,6 +727,8 @@ class blockModel:
             sub     - subsample
             save    - save the matrices
         """
+        timer = ut.Timer()
+        timer.start()
 
         # simple least-squares
         if errform == 'no':
@@ -547,7 +739,17 @@ class blockModel:
         # diagonal of covariance
         elif errform == 'diag':
             vprint(' :: only use the diagonals of the covariance')
-            std_all = np.sqrt(self.Cov)
+
+            if isinstance(self.Cx, list):
+                # turn a list of Cx to a full array of Cx
+                self.Cx = ut.matrix_block_diagonal(*self.Cx)
+
+            std_all = np.sqrt(self.Cx)
+
+            if std_all.shape[0] == std_all.shape[1]:
+                # get the diags of the full covariance
+                std_all = np.diag(std_all).reshape(-1,1)
+
             res = ut.weighted_LS(self.G_all, self.d_all, std_all)
 
 
@@ -562,24 +764,21 @@ class blockModel:
                 vprint(f'    C = ɸ Λ ɸ^T  --> Λ = ɸ^T C ɸ')
 
                 # for easier computation
-                vprint('   decompose block-by-block')
-                L, D = ut.matrix_diagonalization_blockwise(*self.Cov)
+                vprint(f'    decompose block-by-block, {len(self.Cx)} blocks')
+                L, D = ut.matrix_diagonalization_blockwise(*self.Cx, save=save, load=load, names=self.names)
 
                 # takes more memory?
                 # vprint('   decompose Cov all at once')
-                # L, D = ut.matrix_diagonalization(ut.matrix_block_diagonal(self.Cov))
+                # L, D = ut.matrix_diagonalization(ut.matrix_block_diagonal(self.Cx))
 
                 # transform G and d to that diagonalized space
                 vprint(' :: decorrelate and normalize d and G')
-                vprint(f'    L size:{L.nbytes/(1024**2):.3f}MB; D size:{D.nbytes/(1024**2):.3f}MB')
-                self.L = L
-                self.D = D
-                del L, D
+                vprint(f'    L size: {L.nbytes/(1024**2):.2f} MB; D size: {D.nbytes/(1024**2):.2f} MB')
 
-                Gt, dt = ut.decorrelate_normalize_Gd(self.L, self.D, self.G_all, self.d_all)
+                Gt, dt = ut.decorrelate_normalize_Gd(L, D, self.G_all, self.d_all)
                 self.G_tilde = Gt
                 self.d_tilde = dt
-                del Gt, dt
+                del Gt, dt, L, D
 
                 vprint(' :: solve weighted least-squares with new d and G')
                 res = ut.weighted_LS(self.G_tilde, self.d_tilde)
@@ -587,8 +786,15 @@ class blockModel:
             # *****************
 
             else:
-                vprint(' Might run into memory/computation issue!')
-                res = ut.fullCov_LS(self.G_all, self.d_all, self.Cov)
+                vprint('no diagonalization, use full C, block-by-block')
+                #C = ut.matrix_block_diagonal(*self.Cx)
+
+                if gpu_device is not None:
+                    vprint(f'use gpu {gpu_device}')
+                    res = ut.fullCov_cuda_LS_blockwise(self.G_all, self.d_all, self.Cx, gpu_device)
+                else:
+                    vprint(f'no gpu')
+                    res = ut.fullCov_cuda_LS_blockwise(self.G_all, self.d_all, self.Cx)
 
         self.m_all  = res[0]
         self.Cm     = res[1]
@@ -598,21 +804,31 @@ class blockModel:
         self.singv  = res[5]
         self.cond   = res[6]
 
+        # normalize the G matrix with radius, scale back m
+        if not self.bias:
+            self.m_all /=  self.Gnorm
+            self.Cm    /= (self.Gnorm**2)
+            self.m_std /=  self.Gnorm
+
+        timer.stop()
+        print(timer.readable_elapsed())
         vprint('~')
         return
 
 
-    def print_info(self, outfile=False):
+    def print_info(self, outfile=False, action='w'):
         def _show_content():
             #********************************
             #       * report results *
-            print(' m    =\n' , self.m_all)
-            print(' e2   =  ' , self.e2   )
-            print(' rank =  ' , self.rank )
-            print(' singv=  ' , self.singv)
-            print(' Cm    =\n', self.Cm   )
-            print(' m_std =\n', self.m_std)
-            print(' ref_los_vec =\n', np.array(self.ref_los_vec_set))
+            print(' m    =\n' , self.m_all     )
+            print(' e2   =  ' , self.e2        )
+            print(' n_samps=' , len(self.G_all))
+            print(' rank =  ' , self.rank      )
+            print(' singv=  ' , self.singv     )
+            print(' cond =  ' , self.cond      )
+            print(' Cm    =\n', self.Cm        )
+            print(' m_std =\n', self.m_std     )
+            print(' ref_los_vec =\n', self.ref_los_vec_set)
             #********************************
             return
 
@@ -624,9 +840,10 @@ class blockModel:
         # 2) save to outfile
         if outfile:
             from contextlib import redirect_stdout
-            with open(outfile, 'w') as f:
+            with open(outfile, action) as f:
                 with redirect_stdout(f):
                     _show_content()
+                f.write('\n')
 
         return
 
@@ -639,21 +856,35 @@ class blockModel:
 
         bComp = self.bias_comp
 
+        # get the original input G matrix (assume order is identical)
+        if self.subtract_ref:
+            ref_rows  = np.array(self.ref_row_set)
+            if len(self.N_set) > 1:
+                ref_rows += np.cumsum(np.insert(np.array(self.N_set[:len(ref_rows)-1]), 0, 0))
+            ref_rows  = ref_rows[~np.isnan(ref_rows)].astype(int)
+            G_all = np.insert(self.G_all, ref_rows, [0.,0.,0.], axis=0)
+        else:
+            G_all = self.G_all
+
+        # de-normalize the G matrix with radius
+        if not self.bias: G_all = np.array(G_all) * self.Gnorm
+
         # forward predict from model params
-        self.v_pred_all = self.G_all @ self.m_all
+        self.v_pred_all = G_all @ self.m_all
         vprint(f'model prediction on all samples: {self.v_pred_all.shape}')
 
         # get pole & bias params & prediction for each dataset
         self.m = self.m_all[:3]   # the rotation pole vector
 
         # initialize estimated bias
+        if self.bias:
             # N dsets have N biases, if not estimated, remains nan
             # shape = (N,bComp) = (N,1) for 'los' = (N,3) for 'enu'
-        self.m_bias = np.full((len(self.N_set), bComp), np.nan)  # init nan
+            self.m_bias = np.full((len(self.N_set), bComp), np.nan)  # init nan
 
-        # check any input DCs, replace as default
-        if len(self.DCs) != len(self.m_bias):
-            sys.exit('input DCs length does not match m_bias (datasets) length!')
+            # check any input DCs, replace as default
+            if len(self.DCs) != len(self.m_bias):
+                sys.exit('input DCs length does not match m_bias (datasets) length!')
 
         # data prediction array in each dset
         self.v_pred_set = []
@@ -661,7 +892,8 @@ class blockModel:
         for k, (N, dComp) in enumerate(zip(self.N_set, self.dComp_set)):
             r0 = int(np.sum(self.N_set[:k]))       # starting G row
             r1 = int(np.sum(self.N_set[:k+1]))     # ending   G row
-            vprint(f'  set{k+1}: {r0} to {r1} = {N} samples')
+            r1 = (r1-r0)*dComp + r0                # considering dComp in N points is actually dComp*N samples
+            vprint(f'  set{k+1}: {r0} to {r1} = {N*dComp} samples')
             self.v_pred_set.append(self.v_pred_all[r0:r1].reshape(-1,dComp))
 
             # get the bias predictions either in {LOS, ENU->LOS}
@@ -676,7 +908,7 @@ class blockModel:
                     c1 = int(3 + (k+1) * bComp)             # ending   G col   int(3 +  k    * bComp)
 
                     # raw bias(s)
-                    los   = self.G_all[r0, c0:c1].flatten()
+                    los   = G_all[r0, c0:c1].flatten()
                     mbias = self.m_all[c0:c1].flatten()
                     self.m_bias[dset] = np.linalg.norm(los) * mbias
 
@@ -691,6 +923,7 @@ class blockModel:
         self.V_pred_set = []
 
         # reshape all prediction back to 2D image if it is InSAR data
+        #  (for residual calc and plotting!)
         if imgInput and len(self.roi_set) > 0:
             # reshape 1D arrays back to 2D matrices as ROI masks
             for k, (roi, vpred) in enumerate(zip(self.roi_set, self.v_pred_set)):
@@ -714,12 +947,11 @@ class blockModel:
         self.chi2_set = []
         vprint(f'Name   RMS   WRMS   ReducedChi-2')
         for name, Obs, Std, Pred, dComp in zip(self.names, self.Obs_set, self.Std_set, self.V_pred_set, self.dComp_set):
-            if dComp == 1:
-                # remove mean for insar data (ref_point)
+            if dComp==1 and demedian:
                 vprint('remove median for residual calc')
-                Obs  -= np.nanmedian(Obs)
-                Pred -= np.nanmedian(Pred)
-            resid = Obs - Pred
+                resid = (Obs-np.nanmedian(Obs)) - (Pred-np.nanmedian(Pred))
+            else:
+                resid = Obs - Pred
             rms   = ut.calc_wrms(resid)
             wrms  = ut.calc_wrms(resid, w=1/Std)
             chi2, achi2 = ut.calc_reduced_chi2(resid, Std)[:2]
@@ -784,7 +1016,6 @@ class blockModel:
 
         # create params
         block_new.m_all = m_make.reshape(-1,1)
-        print(block_new.m_all.shape, block_new.G_all.shape)
 
         # no inversion quality
         block_new.e2    = None
@@ -815,25 +1046,25 @@ class blockModel:
         rank = np.linalg.matrix_rank(A)
         cond = np.linalg.cond(A)
         plt.title(fr'$rank(G)={rank}$, $cond(G)={cond:.2f}$', fontsize=12)
-        return ax
+        return fig, ax
 
 
     def plot_Cov(self, sub=20, vmax=0.6, title='covariance'):
         """
         plot the subsampled std from Covariance matrix
         """
-        if isinstance(self.Cov, list):
+        if isinstance(self.Cx, list):
             As = []
-            for C in self.Cov:
+            for C in self.Cx:
                 _A = C[::sub,::sub]**0.5
                 As.append(_A)
             A = ut.matrix_block_diagonal(*As)
 
-        elif isinstance(self.Cov, np.ndarray):
-            if len(self.Cov.shape)==2:
-                A = self.Cov[::sub,::sub]**0.5
-            elif len(self.Cov.shape)==1:
-                A = np.diag(self.Cov[::sub]**0.5)
+        elif isinstance(self.Cx, np.ndarray):
+            if len(self.Cx.shape)==2:
+                A = self.Cx[::sub,::sub]**0.5
+            elif len(self.Cx.shape)==1:
+                A = np.diag(self.Cx[::sub]**0.5)
 
         A[A==0] = np.nan
         fig, ax = plt.subplots()
@@ -845,7 +1076,7 @@ class blockModel:
 
     def plot_post_fit(self, plot_tks, block2=None, u_fac=1e3, cmap='RdYlBu_r', clabel='mm/year',
                         vlim1=[None,None], vlim2=[None,None], demean=False,
-                        figsize=(10,6), fontsize=12, aspect=None, **kwargs):
+                        figsize=None, fontsize=10, aspect=None, shrink=0.65, **kwargs):
         """Parameters:
         *   plot_tks    insar datasets (tracks) to plot                         [str]
         *   block2      another block object to compare with the current block  [block obj]
@@ -853,12 +1084,22 @@ class blockModel:
         *   cmap        colormap                                                [str; colorpmap]
         *   clabel      colormap label                                          [str]
         """
+        # num of datasets shown
         N_show = 4       # {obs, std, est_model_pred, postfit_residual}
         if block2 is not None:
             N_show += 2  # {model_pred, model_diff}
+
+        nrows = N_show * 2
+        ncols = len(plot_tks)+1
+        width_ratios = [1]*len(plot_tks)+[0.06]
+
+        if not figsize:
+            figsize = [ncols*0.9, N_show*2]
+
         fig   = plt.figure(figsize=figsize)
-        gspec = fig.add_gridspec(nrows=N_show*2, ncols=len(plot_tks)+1, width_ratios=[1]*len(plot_tks)+[0.06], **kwargs)
+        gspec = fig.add_gridspec(nrows=nrows, ncols=ncols, width_ratios=width_ratios, **kwargs)
         axs   = []
+
         # make subplots
         chi2_tot = 0
         self.model_diff = []
@@ -898,7 +1139,7 @@ class blockModel:
 
             ax1.set_title(k, fontsize=fontsize)
             ax4.text(0.1, 0, f'RMS={rms:.2f}\n'+f'WRMS={wrms:.2f}\n'+fr'$\chi_n^2$={achi2:.2f}',
-                    va='bottom', ha='left', transform=ax4.transAxes, fontsize=8, zorder=99)
+                    va='bottom', ha='left', transform=ax4.transAxes, fontsize=fontsize*shrink, zorder=99)
 
             # show Euler pole models comparison = block - block2
             if block2 is not None:
@@ -917,7 +1158,7 @@ class blockModel:
                 ax6 = fig.add_subplot(gspec[10:12,i])
                 im5 = plot_imshow(ax5, vpred2, cbar=False, cmap=cmap,       vlim=vlim1,               aspect=aspect)[1]
                 im6 = plot_imshow(ax6, diff,   cbar=False, cmap='coolwarm', vlim=0.2*np.array(vlim2), aspect=aspect)[1]
-                ax6.text(0.1, 0, f'RMS={diffrms:.2f}', va='bottom', ha='left', transform=ax6.transAxes, fontsize=8, zorder=99)
+                ax6.text(0.1, 0, f'RMS={diffrms:.2f}', va='bottom', ha='left', transform=ax6.transAxes, fontsize=fontsize*shrink, zorder=99)
                 axs.append([ax1, ax2, ax3, ax4, ax5, ax6])
             else:
                 axs.append([ax1, ax2, ax3, ax4])
@@ -926,44 +1167,51 @@ class blockModel:
         # add reference point symbols
         for ki, k in enumerate(plot_tks):
             refy, refx  = self.ref_yx_set[ki]
-            if (refy!=None) and (refx!=None):
+            if all(x not in (None,np.nan) for x in [refx,refy]):
                 vobs   = u_fac *      self.Obs_set[ki][refy,refx]
                 vpred  = u_fac *   self.V_pred_set[ki][refy,refx]
                 vstd   = u_fac *      self.Std_set[ki][refy,refx]
                 resid  = u_fac *      self.res_set[ki][refy,refx]
                 for i, ax in enumerate(axs[:,ki]): # for all rows
                     ax.scatter(refx, refy, s=8, c='k', marker='s')
-                axs[0,ki].text(refx, refy, f'{vobs  :.2f}', fontsize=8, zorder=99)
-                axs[1,ki].text(refx, refy, f'{vstd  :.2f}', fontsize=8, zorder=99)
-                axs[2,ki].text(refx, refy, f'{vpred :.2f}', fontsize=8, zorder=99)
-                axs[3,ki].text(refx, refy, f'{resid :.2f}', fontsize=8, zorder=99)
+                axs[0,ki].text(refx, refy, f'{vobs  :.2f}', fontsize=fontsize*shrink, zorder=99)
+                axs[1,ki].text(refx, refy, f'{vstd  :.2f}', fontsize=fontsize*shrink, zorder=99)
+                axs[2,ki].text(refx, refy, f'{vpred :.2f}', fontsize=fontsize*shrink, zorder=99)
+                axs[3,ki].text(refx, refy, f'{resid :.2f}', fontsize=fontsize*shrink, zorder=99)
                 if block2 is not None:
                     vpred2 = u_fac * block2.V_pred_set[ki][refy,refx]
                     diff   = vpred - vpred2
-                    axs[4,ki].text(refx, refy, f'{vpred2:.2f}', fontsize=8, zorder=99)
-                    axs[5,ki].text(refx, refy, f'{diff  :.2f}', fontsize=8, zorder=99)
+                    axs[4,ki].text(refx, refy, f'{vpred2:.2f}', fontsize=fontsize*shrink, zorder=99)
+                    axs[5,ki].text(refx, refy, f'{diff  :.2f}', fontsize=fontsize*shrink, zorder=99)
 
         cax1 = fig.add_subplot(gspec[1:2,-1])
         cax2 = fig.add_subplot(gspec[3:4,-1])
         cax3 = fig.add_subplot(gspec[5:6,-1])
         cax4 = fig.add_subplot(gspec[7:8,-1])
-        fig.colorbar(im1, cax=cax1, label=clabel)
-        fig.colorbar(im2, cax=cax2, label=clabel)
-        fig.colorbar(im3, cax=cax3, label=clabel)
-        fig.colorbar(im4, cax=cax4, label=clabel)
+        cbar1 = fig.colorbar(im1, cax=cax1)
+        cbar2 = fig.colorbar(im2, cax=cax2)
+        cbar3 = fig.colorbar(im3, cax=cax3)
+        cbar4 = fig.colorbar(im4, cax=cax4)
+
+        for cbar in [cbar1, cbar2, cbar3, cbar4]:
+            cbar.ax.tick_params(labelsize=fontsize*shrink)
+            cbar.set_label(label=clabel, size=fontsize*shrink)
 
         rchi2 = chi2_tot / (nd-len(self.m_all))  # reduced chi-squares (chi2 per degree of freedom)
         fits  = fr' ($\chi_{{\nu}}^2$={rchi2:.2f})'
-        plt.text(-0.2, 0.5, 'Obs.',          va='center', rotation=90, transform=axs[0,0].transAxes)
-        plt.text(-0.2, 0.5, 'Std.',          va='center', rotation=90, transform=axs[1,0].transAxes)
-        plt.text(-0.2, 0.5, 'Est. rotation', va='center', rotation=90, transform=axs[2,0].transAxes)
-        plt.text(-0.2, 0.5, 'Residual'+fits, va='center', rotation=90, transform=axs[3,0].transAxes)
+        plt.text(-0.2, 0.5, 'Obs.',          va='center', fontsize=fontsize, rotation=90, transform=axs[0,0].transAxes)
+        plt.text(-0.2, 0.5, 'Std.',          va='center', fontsize=fontsize, rotation=90, transform=axs[1,0].transAxes)
+        plt.text(-0.2, 0.5, 'Est. rotation', va='center', fontsize=fontsize, rotation=90, transform=axs[2,0].transAxes)
+        plt.text(-0.2, 0.5, 'Residual'+fits, va='center', fontsize=fontsize, rotation=90, transform=axs[3,0].transAxes)
 
         if block2 is not None:
             cax5 = fig.add_subplot(gspec[9:10,-1])
             cax6 = fig.add_subplot(gspec[11:12,-1])
-            fig.colorbar(im5, cax=cax5, label=clabel)
-            fig.colorbar(im6, cax=cax6, label=clabel)
-            plt.text(-0.2, 0.5, 'PMM rotation'  , va='center', rotation=90, transform=axs[4,0].transAxes)
-            plt.text(-0.2, 0.5, 'Model discrep.', va='center', rotation=90, transform=axs[5,0].transAxes)
+            cbar5 = fig.colorbar(im5, cax=cax5, label=clabel)
+            cbar6 = fig.colorbar(im6, cax=cax6, label=clabel)
+            for cbar in [cbar5, cbar6]:
+                cbar.ax.tick_params(labelsize=fontsize*shrink)
+                cbar.set_label(label=clabel, size=fontsize*shrink)
+            plt.text(-0.2, 0.5, 'PMM rotation'  , va='center', fontsize=fontsize, rotation=90, transform=axs[4,0].transAxes)
+            plt.text(-0.2, 0.5, 'Model discrep.', va='center', fontsize=fontsize, rotation=90, transform=axs[5,0].transAxes)
         return fig, axs
