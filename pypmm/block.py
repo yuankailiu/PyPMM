@@ -530,6 +530,72 @@ class blockModel:
         print('done~')
 
 
+    def compute_Cp(self, mc_dir, m0=None, subset=None, savefile=False):
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from rotation import read_pole_files
+
+
+        print(f'Read model from realizations under : {mc_dir}')
+        path = Path(mc_dir)
+        in_files = sorted(glob.glob(str(path / 'ref*' / 'block.out')))
+        ms = read_pole_files(in_files, error='propagate')[6]
+
+
+        # subset realizations
+        if subset is not None:
+            ms       =       ms[subset[0]:subset[1]]
+            in_files = in_files[subset[0]:subset[1]]
+
+
+        # Read prediction realizations #
+        ds = [[] for _ in range(len(self.d_set))]
+
+        for l, (mi, file) in enumerate(zip(ms, in_files)):
+            # Read vpred from realization i
+            Rpath = Path(file).parent
+            with open(Rpath/'dump.pkl', 'rb') as f:
+                v_pred_set = pickle.load(f)[1]
+
+            # skip realization if G has missing samples
+            vpred_all = np.concatenate([arr.flatten() for arr in v_pred_set])
+            print(f'realization #{l}, dSet={len(v_pred_set)}, N={len(vpred_all)}')
+
+            # each dataset i, compute Cp, no correlation with other datasets
+            for i, vpred in enumerate(v_pred_set):
+                vpred = vpred.flatten()
+                print(f' #{l}, dset {i}, {len(vpred)}')
+
+                # append
+                ds[i].append(vpred.flatten())
+
+
+        print(f'Array formating of {len(ds)} predicted datasets')
+        for i in range(len(ds)):
+            ds[i] = np.array(ds[i])
+
+        print(f'Compute Cp across {l+1} realizations for {len(ds)} datasets')
+        self.Cp_set = []
+
+        for i, (vpred, roi, refyx, ref_row) in enumerate(zip(ds,
+                                                             self.roi_set,
+                                                             self.ref_yx_set,
+                                                             self.ref_row_set)):
+            Cp = np.cov(vpred, rowvar=False)
+
+            print(f' dset #{i}  shape={vpred.shape}  reference Cov matrix: {self.subtract_ref}  REF_YX: {refyx}')
+            if (self.subtract_ref) and (refyx!=(np.nan,np.nan)):
+                Cp = np.delete(Cp, ref_row, axis=0)   # remove refpoint row
+                Cp = np.delete(Cp, ref_row, axis=1)   # remove refpoint col
+            self.Cp_set.append(Cp)
+
+
+        if savefile:
+            # Save the list of arrays to a .pkl file
+            with open(savefile, 'wb') as f:
+                pickle.dump(self.Cp_set, f)
+
+        return
+
 
     def insert_Cps(self, mc_dir, m0=None, subset=None, savefile=False):
         sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -561,7 +627,6 @@ class blockModel:
         if subset is not None:
             ms       =       ms[subset[0]:subset[1]]
             in_files = in_files[subset[0]:subset[1]]
-
 
 
         # realization #
@@ -649,7 +714,7 @@ class blockModel:
 
 
 
-    def Covariance(self, errname='Cdt', plot=False):
+    def Covariance(self, errname='Cdt', plotcov=False, plotdiag=False):
         """build the covariance matrix
         errname   - type of the error model assumption
                 Cdt  : 1/sigma from diagonals of the temporal covariance
@@ -664,55 +729,71 @@ class blockModel:
         """
         N = self.G_all.shape[0]
 
-        if errname == 'Cdt':
-            # basic Cd (Cd temporal from insar and gps)
-            self.Cx = self.std_all**2
-            pass
+        Diag = {'Cdt':[], 'Cds':[], 'Cp':[]}
 
-        elif errname in ['Cds','Cdts','Cx']:
-            if self.subtract_ref:
-                del_row = 1
-            else:
-                del_row = 0
 
-            self.Cx = []
-            n1 = 0
-            for i, (n, dComp) in enumerate(zip(self.N_set, self.dComp_set)):
-                if i <= len(self.Cds_set)-1:
-                    Cds = self.Cds_set[i]
-                    if len(self.Cds_set[i]) == n-del_row:
-                        n -= del_row   # referenced insar data, update n
-                else:
-                    # ignore spatial covariance when not finding the corresponding one: gps or synthetic sar
-                    print('ignore spatial covariance, fill with zeros')
-                    n *= dComp
-                    if dComp==1 and del_row!=0:
-                        # reference the sar data
-                        n -= del_row
-                    Cds = np.zeros((n,n), dtype=np.float64)
-
-                if errname == 'Cds':
-                    self.Cx.append(Cds)
-
-                elif errname == 'Cdts':
-                    Cdt = np.diag(self.std_all[n1:n1+n].flatten())**2
-                    self.Cx.append(Cdt + Cds)
-
-                elif errname == 'Cx':
-                    print('TESTING NOW, be careful!')
-
-                    Cdt = np.diag(self.std_all[n1:n1+n].flatten())**2
-                    Cp = self.Cp_set[i]
-
-                    self.Cx.append(Cdt + Cds + Cp)
-
-                n1 += n
-
-        if plot:
-            ax = self.plot_Cov()
-            return ax
+        if self.subtract_ref:
+            del_row = 1
         else:
-            return
+            del_row = 0
+
+        self.Cx = []
+        n1 = 0
+        for i, (n, dComp) in enumerate(zip(self.N_set, self.dComp_set)):
+
+            # ++ spatial Cd  (full covariance)
+            if i <= len(self.Cds_set)-1:
+                Cds = self.Cds_set[i]
+                if len(self.Cds_set[i]) == n-del_row:
+                    n -= del_row   # referenced insar data, update n
+            else:
+                # ignore spatial covariance when not finding the corresponding one: gps or synthetic sar
+                print('ignore spatial covariance, fill with zeros')
+                n *= dComp
+                if dComp==1 and del_row!=0:
+                    # reference the sar data
+                    n -= del_row
+                Cds = np.zeros((n,n), dtype=np.float32)
+
+            # ++ temporal Cd  (only diagonals)
+            Cdt = self.std_all[n1:n1+n].flatten()**2
+
+            # ++ reference theory error Cp (default=None, otherwise full covariance)
+            Cp = None
+
+            if errname == 'Cdt':
+                print('Cx = Cdt')
+                self.Cx.append(np.diag(Cdt))
+
+            elif errname == 'Cds':
+                print('Cx = Cds')
+                self.Cx.append(np.array(Cds))
+
+            elif errname == 'Cdts':
+                print('Cx = Cd = Cdt + Cds')
+                self.Cx.append(np.array(Cds) + np.diag(Cdt))
+
+            elif errname == 'Cx':
+                print('Cx = Cd + Cp; TESTING, PROCEED WITH CAUTION!')
+                Cp = self.Cp_set[i]
+                self.Cx.append(np.array(Cds) + np.diag(Cdt) + np.array(Cp))
+
+            # save diagonals for plotting
+            if Cdt is not None: Diag['Cdt'].append(np.array(Cdt))
+            if Cds is not None: Diag['Cds'].append( np.diag(Cds))
+            if Cp  is not None: Diag[ 'Cp'].append( np.diag(Cp))
+
+            n1 += n
+
+        if plotcov:
+            ax1 = self.plot_Cov(plotcov, errname, vmax=2.4)
+            plt.close()
+
+        if plotdiag:
+            ax2 = self.plot_Cov_diag(plotdiag, Diag, errname, ylim=[0,2.4])
+            plt.close()
+
+        return
 
 
     def invert(self, errform='no', diagonalize=False, gpu_device=None, save=False, load=False):
@@ -1049,28 +1130,96 @@ class blockModel:
         return fig, ax
 
 
-    def plot_Cov(self, sub=20, vmax=0.6, title='covariance'):
+    def plot_Cov(self, figname, errname='', sub=20, vmax=0.6, title='Covariance'):
         """
         plot the subsampled std from Covariance matrix
         """
         if isinstance(self.Cx, list):
-            As = []
-            for C in self.Cx:
-                _A = C[::sub,::sub]**0.5
-                As.append(_A)
-            A = ut.matrix_block_diagonal(*As)
+            _As = []
+            for _C in self.Cx:
+                _As.append(_C[::sub,::sub])
+            A = ut.matrix_block_diagonal(*_As)
 
         elif isinstance(self.Cx, np.ndarray):
             if len(self.Cx.shape)==2:
-                A = self.Cx[::sub,::sub]**0.5
+                A = self.Cx[::sub,::sub]
             elif len(self.Cx.shape)==1:
-                A = np.diag(self.Cx[::sub]**0.5)
+                A = np.diag(self.Cx[::sub])
 
         A[A==0] = np.nan
+        A = np.sqrt(A) * 1e3
         fig, ax = plt.subplots()
-        im = ax.imshow(A*1e3, vmax=vmax)
-        plt.colorbar(im, ax=ax, label=r'$C_{d_s}^{0.5}$ [mm/yr]')
-        plt.title(title)
+        im = ax.imshow(A, vmax=vmax)
+        plt.colorbar(im, ax=ax, label=r'$C^{0.5}$ [mm/yr]')
+        plt.title(title+': '+errname)
+        plt.savefig(figname, dpi=200, transparent=True, bbox_inches='tight')
+        return ax
+
+
+    def plot_Cov_diag(self, figname, Diag, errname='Cdt', ylim=None, title='Covariance diagonals'):
+        """
+        plot the diagonals from the Covariance matrix
+        """
+
+        # put together errors from all datasets
+        cdt = np.concatenate(Diag['Cdt']) if len(Diag['Cdt'])>0 else None
+        cds = np.concatenate(Diag['Cds']) if len(Diag['Cds'])>0 else None
+        cp  = np.concatenate(Diag['Cp'])  if len(Diag['Cp' ])>0 else None
+
+        # error terms
+        if errname == 'Cdt':
+            name = 'total = temporal Cd'
+            total = cdt
+
+        elif errname == 'Cds':
+            name = 'total = spatial Cd'
+            total = cds
+
+        elif errname == 'Cdts':
+            name = 'total = temporal+spatial Cd'
+            total = cdt + cds
+
+        elif errname == 'Cx':
+            name = 'total = Cd + Cp'
+            total = cdt + cds + cp
+
+        else:
+            total = None
+
+        print(name)
+
+        total = np.sqrt(total) * 1e3   # meter^2/yr^2 to mm/yr
+
+        # ++ Plot ++
+        #  subset some samples
+        #  scale from (m/yr)^2 to (mm/yr)
+        fig, ax = plt.subplots(figsize=[8,3.6])
+        lw    = 1.
+        alpha = 0.9
+        sub   = 10
+
+        if cp is not None:
+            cp  = np.sqrt( cp[::sub]) * 1e3
+            ax.scatter(np.arange(len(cp)), cp, c='orange', s=lw, label='Cp', alpha=alpha)
+
+        if cdt is not None:
+            cdt = np.sqrt(cdt[::sub]) * 1e3
+            ax.scatter(np.arange(len(cdt)), cdt, c='blue', s=lw, label='Cdt', alpha=alpha)
+
+        if cds is not None:
+            cds = np.sqrt(cds[::sub]) * 1e3
+            ax.plot(np.arange(len(cds)), cds, c='red', lw=lw, label='Cds', alpha=alpha)
+
+        if ylim is None:
+            ylim = [0, np.mean(total)]
+
+        ax.set_ylim(ylim[0], ylim[1])
+        ax.set_xlabel('diagonal #')
+        ax.set_ylabel(r'$C^{0.5}$ [mm/yr]')
+        plt.title(title+': '+errname)
+        plt.legend(loc='upper right', markerscale=2.)
+        plt.savefig(figname, dpi=200, transparent=True, bbox_inches='tight')
+
         return ax
 
 

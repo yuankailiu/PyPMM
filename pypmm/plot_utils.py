@@ -82,10 +82,10 @@ class HandlerEllipse(HandlerPatch):
         return [p]
 
 
-def create_ellipses_handler_map(ellps, width=20, height=10):
+def create_ellipses_handler_map(ellps, width=20, height=10, lw=2):
     handler_map = {}
     for i, ell in enumerate(ellps):
-        handler_map[ell] = HandlerEllipse(width=width*(0.6**i), height=height*(0.5**i))
+        handler_map[ell] = HandlerEllipse(width=width*(0.6**i), height=height*(0.5**i), lw=lw*(0.8**i))
     return handler_map
 
 
@@ -389,7 +389,7 @@ def draw_confidence_ellipse( ax        : matplotlib.axes.Axes,
     mean_y = np.nanmean(y)
 
     # set color
-    ec = color
+    ec = tweak_color(color, luminos=1.0)
     fc = tweak_color(color, alpha=elp_alpha)
 
     # plot the error ellipse
@@ -422,16 +422,16 @@ def draw_confidence_ellipse( ax        : matplotlib.axes.Axes,
 
         # plot the pole location
         if hasattr(ax, 'projection'):
-            ax.scatter(mean_x, mean_y, s=markersize, marker='o', fc=fc, ec=markerec, transform=ccrs.PlateCarree(), **kwargs)
+            ax.scatter(mean_x, mean_y, s=markersize, marker='o', fc=ec, ec=markerec, transform=ccrs.PlateCarree(), **kwargs)
         else:
-            ax.scatter(mean_x, mean_y, s=markersize, marker='o', fc=fc, ec=markerec, **kwargs)
+            ax.scatter(mean_x, mean_y, s=markersize, marker='o', fc=ec, ec=markerec, **kwargs)
 
     else:
         # plot the pole location, show legend
         if hasattr(ax, 'projection'):
-            ax.scatter(mean_x, mean_y, s=markersize, marker='o', fc=fc, transform=ccrs.PlateCarree(), **kwargs)
+            ax.scatter(mean_x, mean_y, s=markersize, marker='o', fc=ec, transform=ccrs.PlateCarree(), **kwargs)
         else:
-            ax.scatter(mean_x, mean_y, s=markersize, marker='o', fc=fc, **kwargs)
+            ax.scatter(mean_x, mean_y, s=markersize, marker='o', fc=ec, **kwargs)
 
     return ellipse
 
@@ -500,7 +500,8 @@ def plot_pole_covariance( poles     : object,
                           grids_on  : bool  | None = True,
                           elp_lw    : float | None = 1,
                           elp_alpha : float | None = 1,
-                          axLabels  : list  | None = [None,None,'Rate [$^\circ$/Ma]'],
+                          elp_lglw  : float | None = 1,
+                          axLabels  : list  | None = [None,None,r'Rate [$^\circ$/Ma]'],
                           leg_ncol  : int   | None = 3,
                           **kwargs,  # for crrs.features() in ax1
                           ) -> tuple :
@@ -509,6 +510,8 @@ def plot_pole_covariance( poles     : object,
         2. Lat vs rate
         3. Lon vs rate
     """
+    kwargs = update_kwargs(kwargs)
+
     print(f'plot {n_std} sigmas of the covariance as error ellipse')
     if not isinstance(poles,  list): poles  = [poles]
     if not isinstance(names,  list): names  = [names]
@@ -601,16 +604,16 @@ def plot_pole_covariance( poles     : object,
 
         if not isinstance(n_std, (list,np.ndarray)):
             n_std = [n_std]
-        n_std.sort(reverse=True) # descending order
 
         if isinstance(n_std, (list,np.ndarray)):
             ells = []
             for i in range(len(n_std)):
-                ci = tweak_color(color, luminos=(i+1)/len(n_std))
+                ratio = 0.75
+                ci = tweak_color(color, luminos=(len(n_std)-i*ratio)/len(n_std))
                 ell = draw_confidence_ellipse(ax1, x=pole.poleLon, y=pole.poleLat, cov=cov, n_std=n_std[i], color=ci, elp_lw=elp_lw, elp_alpha=elp_alpha, print_msg=False)
                 ells.append(ell)
-            ells = tuple(ells)
-            handler_map = create_ellipses_handler_map(ells)
+            ells = tuple(ells[::-1])
+            handler_map = create_ellipses_handler_map(ells, lw=elp_lglw)
             Ells.append(ells)
             Handler_map.update(handler_map)
         else:
@@ -623,7 +626,7 @@ def plot_pole_covariance( poles     : object,
     if len(Ells) != 0:
         ncol = leg_ncol
         leg  = axleg.legend(Ells, names, handler_map=Handler_map,
-                          loc='upper left', fontsize=12,
+                          loc='upper left', fontsize=kwargs['font_size'],
                           bbox_to_anchor=(-0.05, 0.85),
                           frameon=False, ncol=leg_ncol, columnspacing=1,
                           title=legtitle,
@@ -631,7 +634,7 @@ def plot_pole_covariance( poles     : object,
     else:
         handles, labels = ax1.get_legend_handles_labels()
         leg  = axleg.legend(handles, labels,
-                          loc='lower left', fontsize=12,
+                          loc='lower left', fontsize=kwargs['font_size'],
                           title=legtitle,
                           )
     leg._legend_box.align = 'left'
@@ -650,7 +653,8 @@ def plot_pole_covariance( poles     : object,
 
         if isinstance(n_std, (list,np.ndarray)):
             for i in range(len(n_std)):
-                ci = tweak_color(color, luminos=(i+1)/len(n_std))
+                ratio = 0.75
+                ci = tweak_color(color, luminos=(len(n_std)-i*ratio)/len(n_std))
                 ell = draw_confidence_ellipse(ax2, x=pole.rotRate*MASY2DMY, y=pole.poleLat, cov=cov, n_std=n_std[i],
                                          color=ci, elp_lw=elp_lw, elp_alpha=elp_alpha, print_msg=False)
         else:
@@ -680,7 +684,8 @@ def plot_pole_covariance( poles     : object,
 
         if isinstance(n_std, (list,np.ndarray)):
             for i in range(len(n_std)):
-                ci = tweak_color(color, luminos=(i+1)/len(n_std))
+                ratio = 0.75
+                ci = tweak_color(color, luminos=(len(n_std)-i*ratio)/len(n_std))
                 ell = draw_confidence_ellipse(ax3, x=pole.poleLon, y=pole.rotRate*MASY2DMY, cov=cov, n_std=n_std[i],
                                          color=ci, elp_lw=elp_lw, elp_alpha=elp_alpha, print_msg=False)
         else:
@@ -707,7 +712,6 @@ def plot_pole_covariance( poles     : object,
     [ll.set_linewidth(tickw) for ll in ax3.spines.values()]
 
     # ccrs feature to axis 1
-    kwargs = update_kwargs(kwargs)
     ax1.add_feature(cfeature.COASTLINE, ec='k'   , lw=0.6)
     ax1.add_feature(cfeature.BORDERS  , ec='gray', lw=0.1)
     ax1.add_feature(cfeature.OCEAN    , fc=kwargs['c_ocean'])
@@ -906,7 +910,7 @@ def update_kwargs(kwargs : dict) -> dict:
     kwargs['c_land']      = kwargs.get('c_land'     , 'gainsboro')
     kwargs['c_plate']     = kwargs.get('c_plate'    , 'w'        )
     kwargs['lw_coast']    = kwargs.get('lw_coast'   , 0.3        )
-    kwargs['lw_border']   = kwargs.get('lw_border'  , 0.15       )
+    kwargs['lw_border']   = kwargs.get('lw_border'  , 0.05       )
     kwargs['lw_pbond']    = kwargs.get('lw_pbond'   , 1.4        )
     kwargs['ls_pbond']    = kwargs.get('ls_pbond'   , '--'       )
     kwargs['lc_pbond']    = kwargs.get('lc_pbond'   , 'k'        )
@@ -917,7 +921,7 @@ def update_kwargs(kwargs : dict) -> dict:
     kwargs['grid_dx']     = kwargs.get('grid_dx'    , 10.        )
     kwargs['grid_dy']     = kwargs.get('grid_dy'    , 10.        )
     kwargs['qnum']        = kwargs.get('qnum'       , 6          )
-    kwargs['font_size']   = kwargs.get('font_size'  , 12         )
+    kwargs['font_size']   = kwargs.get('font_size'  , 11         )
 
     # point of interest
     kwargs['pts_lalo']    = kwargs.get('pts_lalo'   , None       )
@@ -1059,7 +1063,7 @@ def plot_basemap( plate_boundary   : object,
 
     # cartopy features
     ax.add_feature(cfeature.COASTLINE, ec='k'   , lw=kwargs['lw_coast'])
-    ax.add_feature(cfeature.BORDERS  , ec='gray', lw=kwargs['lw_border'])
+    ax.add_feature(cfeature.BORDERS  , ec='grey', lw=kwargs['lw_border'], alpha=0.4)
     ax.add_feature(cfeature.OCEAN    , fc=kwargs['c_ocean'], zorder=0.8)
     ax.add_feature(cfeature.LAKES    , fc=kwargs['c_ocean'], zorder=0.8)
     ax.add_feature(cfeature.LAND     , fc=kwargs['c_land'] , zorder=0.8)
@@ -1207,8 +1211,8 @@ def plot_plate_motion( plate_boundary   : object,
         rmse = ut.calc_wrms(Ve[0]-Ve[1])
         rmsn = ut.calc_wrms(Vn[0]-Vn[1])
         show_str = fr'$RMS_e=${rmse*1e3:.3f} mm/yr' + '\n' + fr'$RMS_n=${rmsn*1e3:.3f} mm/yr'
-        ax.annotate(show_str, xy=(1,.97), xycoords='axes fraction', fontsize=12, annotation_clip=False, ha='right', va='top',
-                    bbox=dict(facecolor='white', alpha=0.85, edgecolor='black', boxstyle='round,pad=0.2'), zorder=20)
+        ax.annotate(show_str, xy=(1,.97), xycoords='axes fraction', fontsize=kwargs['font_size'], annotation_clip=False, ha='right', va='top',
+                    bbox=dict(facecolor='white', alpha=0.98, edgecolor='black', boxstyle='round,pad=0.2'), zorder=20)
 
 
     # arrows
@@ -1250,15 +1254,15 @@ def plot_plate_motion( plate_boundary   : object,
                             )
 
             if 'qkX' not in kwargs:
-                X, Y, qkstep = None, None, None
+                qkX, qkY, qkdX, qkdY = None, None, None, None
             else:
-                X, Y, qkstep = kwargs['qkX'], kwargs['qkY'], kwargs['qkstep']
+                qkX, qkY, qkdX, qkdY = kwargs['qkX'], kwargs['qkY'], kwargs['qkdX'], kwargs['qkdY']
 
-            if any(var is None for var in [X, Y, qkstep]):
-                X, Y, qkstep = 0.4, -0.158, -0.076
+            if any(var is None for var in [qkX, qkY, qkdX, qkdY]):
+                qkX, qkY, qkdX, qkdY = 0.4, -0.158, 0.18, -0.076
 
             if quiverlegend:
-                qk = ax.quiverkey(q, X=X, Y=Y+qkstep*(j+1), U=-qunit,
+                qk = ax.quiverkey(q, X=qkX+qkdX, Y=qkY+qkdY*(j+1), U=-qunit,
                                 label=qn, coordinates='axes',
                                 labelpos='E', labelsep=0.5,
                                 fontproperties={'size':kwargs['font_size']},
@@ -1267,7 +1271,7 @@ def plot_plate_motion( plate_boundary   : object,
             Q.append(q)
 
         if quiverlegend:
-            ax.text(X, Y, f'Plate motion ({qunit} {unit}/yr)',
+            ax.text(qkX, qkY, f'Plate motion ({qunit} {unit}/yr)',
                     clip_on=False, transform=ax.transAxes)
     #-----------------------------------------------------------
 
