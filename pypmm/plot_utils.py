@@ -1099,6 +1099,7 @@ def plot_plate_motion( plate_boundary   : object,
                        figsize          : list  | tuple        | None = [5, 5],
                        epole_obj        : object               | None = None,
                        compare_duel     : bool                 | None = None,
+                       compare_stat     : str                  | None = 'rms',
                        orb              : bool                 | None = True,
                        helmert          : dict                 | None = False,
                        Ve               : list                 | None = None,   # meter/yr
@@ -1208,10 +1209,15 @@ def plot_plate_motion( plate_boundary   : object,
 
     # compare the first two pole
     if compare_duel is not None and len(epole_obj)>=2:
-        rmse = ut.calc_wrms(Ve[0]-Ve[1])
-        rmsn = ut.calc_wrms(Vn[0]-Vn[1])
-        show_str = fr'$RMS_e=${rmse*1e3:.3f} mm/yr' + '\n' + fr'$RMS_n=${rmsn*1e3:.3f} mm/yr'
-        ax.annotate(show_str, xy=(1,.97), xycoords='axes fraction', fontsize=kwargs['font_size'], annotation_clip=False, ha='right', va='top',
+        if compare_stat == 'rms':
+            rmse = ut.calc_wrms(Ve[0]-Ve[1])
+            rmsn = ut.calc_wrms(Vn[0]-Vn[1])
+            show_str = fr'$RMS_e=${rmse*1e3:.3f} mm/yr' + '\n' + fr'$RMS_n=${rmsn*1e3:.3f} mm/yr'
+        elif compare_stat == 'diff':
+            diffe = np.mean(Ve[0]-Ve[1])
+            diffn = np.mean(Vn[0]-Vn[1])
+            show_str = fr'$\bar{{\delta}}_{{v_e}}=${diffe*1e3:.3f} mm/yr' + '\n' + fr'$\bar{{\delta}}_{{v_n}}=${diffn*1e3:.3f} mm/yr'
+        ax.annotate(show_str, xy=(1,.97), xycoords='axes fraction', fontsize=kwargs['font_size']*1.1, annotation_clip=False, ha='right', va='top',
                     bbox=dict(facecolor='white', alpha=0.98, edgecolor='black', boxstyle='round,pad=0.2'), zorder=20)
 
 
@@ -1253,7 +1259,7 @@ def plot_plate_motion( plate_boundary   : object,
                             transform=ccrs.PlateCarree(),
                             )
 
-            if 'qkX' not in kwargs:
+            if 'qkX' not in kwargs.keys():
                 qkX, qkY, qkdX, qkdY = None, None, None, None
             else:
                 qkX, qkY, qkdX, qkdY = kwargs['qkX'], kwargs['qkY'], kwargs['qkdX'], kwargs['qkdY']

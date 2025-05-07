@@ -128,25 +128,29 @@ class blockModel:
         self.bias         = False       # estimate the bias term (DC shift)
         self.bias_comp    = 1           # number of bias components
 
-        # least-squares matrices
-        self.Gc_set   = []              # cross-product matrix
-        self.T_set    = []              # XYZ to ENU transform matrix
-        self.L_set    = []              # ENU to LOS projection matrix
+        # geometric transformation matrices
+        self.Gnorm    = 1.              # or EARTH_RADIUS_A
+        self.Tx_set   = []              # cross-product matrix
+        self.Tt_set   = []              # XYZ to ENU transform matrix
+        self.Tl_set   = []              # ENU to LOS projection matrix
         self.G_set    = []              # Combine the above three
-        self.d_set    = []              # dataset 1-D array
+        self.R_set    = []              # optional ramp design matrix
 
-        # 1d array like
+        # 1d array-like
+        self.d_set    = []              # dataset 1-D array
         self.std_set  = []              # data standard dev 1-D array
         self.lats_set = []              # latitude of samples
         self.lons_set = []              # longitude of samples
-        self.los_inc_angle_set = []     # incidence angle
-        self.los_azi_angle_set = []     # azimuth angle
+        self.x_set    = []              # x (column) coord from lowerleft
+        self.y_set    = []              # y (row)    coord from lowerleft
+        self.inc_set  = []              # incidence angle
+        self.azi_set  = []              # azimuth angle
         self.ref_los_vec_set   = []     # ref point LOS unit vector
         self.ref_lalo_set      = []     # ref point lat and lon
         self.ref_yx_set        = []     # ref point x and y
         self.ref_row_set       = []     # ref point row in its G matrix
 
-        # 2D matrix as roi masks
+        # 2D matrix like roi masks
         self.roi_set  = []              # roi mask
         self.Obs_set  = []              # data as image
         self.Std_set  = []              # std as image
@@ -175,18 +179,26 @@ class blockModel:
         # add track name if given
         if name is not None: self.names.append(name); vprint(f'add dataset {name}')
 
+        # array shape, x, y coords
+        arrshape = lats.shape
+        rows, cols = arrshape
+        x = np.tile(np.arange(cols)      , (rows, 1))    # x increases along columns
+        y = np.tile(np.arange(rows)[::-1], (cols, 1)).T  # y increases upwards, flip rows
+
         # initalize null inputs
-        shapes = lats.shape
-        if data is None: data = np.full(shapes, np.nan); vprint('No data is defined, set to nan')
-        if roi  is None:  roi = np.full(shapes,   True); vprint('No  roi is defined, set all to True')
-        if std  is None:  std = np.full(shapes,    1.0); vprint('No  std is defined, set all to unity 1.0')
+        if data is None: data = np.full(arrshape, np.nan); vprint('No data is defined, set to nan')
+        if roi  is None:  roi = np.full(arrshape,   True); vprint('No  roi is defined, set all to True')
+        if std  is None:  std = np.full(arrshape,    1.0); vprint('No  std is defined, set all to unity 1.0')
 
         # single float
-        if isinstance(los_inc_angle, float): los_inc_angle = np.full(shapes, los_inc_angle)
-        if isinstance(los_azi_angle, float): los_azi_angle = np.full(shapes, los_azi_angle)
+        if isinstance(los_inc_angle, float): los_inc_angle = np.full(arrshape, los_inc_angle)
+        if isinstance(los_azi_angle, float): los_azi_angle = np.full(arrshape, los_azi_angle)
 
-        vprint(f'flatten data {shapes} to a 1D array')
-        self.add_data_array(data[roi], lats[roi], lons[roi], std[roi], los_inc_angle[roi], los_azi_angle[roi], comp=comp)
+        # add to 1D
+        vprint(f'flatten data {arrshape} to a 1D array')
+        self.add_data_array(data[roi], lats[roi], lons[roi], std[roi], x[roi], y[roi], los_inc_angle[roi], los_azi_angle[roi], comp=comp)
+
+        # add to 2D
         self.roi_set.append(roi)
         self.Obs_set.append(data)
         self.Std_set.append(std)
@@ -200,10 +212,10 @@ class blockModel:
         self.ref_yx_set.append(ref_yx)
         self.ref_lalo_set.append(ref_lalo)
         self.ref_los_vec_set.append(ref_los_vec)
-        if ref_yx==(np.nan, np.nan) or len(shapes)==1:
+        if ref_yx==(np.nan, np.nan) or len(arrshape)==1:
             self.ref_row_set.append(np.nan)
         else:
-            ref_idx = ref_yx[0]*shapes[1] + ref_yx[1]
+            ref_idx = ref_yx[0]*arrshape[1] + ref_yx[1]
             ref_row = ut.get_masked_index(roi.flatten(), ref_idx)
             self.ref_row_set.append(ref_row)
 
@@ -220,7 +232,7 @@ class blockModel:
         self.add_data_array(data, lats, lons, std, comp=comp)
 
 
-    def add_data_array(self, data, lats, lons, std=None, los_inc_angle=None, los_azi_angle=None, comp='los'):
+    def add_data_array(self, data, lats, lons, std=None, x=None, y=None, los_inc_angle=None, los_azi_angle=None, comp='los'):
         # check data dimension
         if   comp in ['los','azi','azimuth','rg','range']: dim_c = 1
         elif comp == 'en' : dim_c = 2
@@ -248,49 +260,54 @@ class blockModel:
         self.lats_set.append(lats)
         self.lons_set.append(lons)
 
+        # append 1D x/y to whole set
+        if all(_ele is not None for _ele in [x, y]):
+            self.x_set.append(x)
+            self.y_set.append(y)
+
         # append 1D geom to whole set
-        if all(_los is not None for _los in [los_inc_angle, los_azi_angle]):
-            self.los_inc_angle_set.append(los_inc_angle)
-            self.los_azi_angle_set.append(los_azi_angle)
+        #if all(_ele is not None for _ele in [los_inc_angle, los_azi_angle]):
+        self.inc_set.append(los_inc_angle)
+        self.azi_set.append(los_azi_angle)
 
         vprint(f'added data ({dim_s} sites, {dim_c} components) = {dim_n} samples')
         vprint('~')
 
 
-    def build_Gc(self):
-        # rotation cross product: v_xyz = Ω x r = Gc @ Ω
+    def build_Tx(self):
+        # rotation cross product: v_xyz = Ω x r = Tx @ Ω
         # Reference: Equation (2) in Meade & Loveless 2009
         for k, (N, dComp) in enumerate(zip(self.N_set, self.dComp_set)):
-            Gc   = np.full((N//dComp, 3, 3), 0.)
+            Tx   = np.full((N//dComp, 3, 3), 0.)
             lats = self.lats_set[k]
             lons = self.lons_set[k]
             x, y, z = ut.T_llr2xyz(lats, lons)
-            Gc = ut.R_crossProd_xyz(x, y, z)
-            self.Gc_set.append(Gc)
-            vprint('built Gc shape', Gc.shape)
+            Tx = ut.R_crossProd_xyz(x, y, z)
+            self.Tx_set.append(Tx)
+            vprint(f'built Tx, shape={Tx.shape}')
         vprint('~')
 
 
-    def build_T(self):
-        # cart2enu: v_enu = T @ v_xyz
-        # where T rotates the cartesian coord to local ENU coord
+    def build_Tt(self):
+        # cart2enu: v_enu = Tt @ v_xyz
+        # where Tt rotates the cartesian coord to local ENU coord
         for k, (N, dComp) in enumerate(zip(self.N_set, self.dComp_set)):
-            T    = np.full((N//dComp, 3, 3), 0.)
+            Tt   = np.full((N//dComp, 3, 3), 0.)
             lats = self.lats_set[k]
             lons = self.lons_set[k]
-            T = ut.R_xyz2enu(lat=lats, lon=lons)
-            self.T_set.append(T)
-            vprint('built T shape', T.shape)
+            Tt   = ut.R_xyz2enu(lat=lats, lon=lons)
+            self.Tt_set.append(Tt)
+            vprint(f'built Tt, shape={Tt.shape}')
         vprint('~')
 
 
-    def build_L(self):
-        # enu2los: v_los = L @ v_enu
-        # where L is the line-of-sight projection operation
+    def build_Tl(self):
+        # enu2los: v_los = Tl @ v_enu
+        # where Tl is the line-of-sight projection operation
         # can also be other projections
         for k, (N, comp) in enumerate(zip(self.N_set, self.Comp_set)):
-            los_inc_angle = self.los_inc_angle_set[k]
-            los_azi_angle = self.los_azi_angle_set[k]
+            los_inc_angle = self.inc_set[k]
+            los_azi_angle = self.azi_set[k]
 
             if comp.lower().startswith('az'):
                 comp = 'en2az'
@@ -299,94 +316,160 @@ class blockModel:
             else:
                 sys.exit(f'cannot recognize the component string: {comp}')
 
-            L = np.array(ut.get_unit_vector4component_of_interest(los_inc_angle = los_inc_angle,
-                                                                  los_az_angle  = los_azi_angle,
-                                                                  comp          = comp)).T
-            self.L_set.append(L)
-            vprint(f'built L shape {L.shape} {comp}')
+            Tl = np.array(ut.get_unit_vector4component_of_interest(los_inc_angle = los_inc_angle,
+                                                                   los_az_angle  = los_azi_angle,
+                                                                   comp          = comp)).T
+            self.Tl_set.append(Tl)
+            vprint(f'built Tl, comp={comp}')
         vprint('~')
 
 
-    def build_G(self):
-        # The overall forward G matrix: v_los = G @ Ω = (L @ T @ Gc) @ Ω
+    def build_G(self, rerun=True):
+        if rerun:
+            # compute the pre-requisite matrices
+            self.build_Tx()
+            self.build_Tt()
+            self.build_Tl()
+
+        # The overall forward G matrix: v_los = G @ Ω = (Tl @ Tt @ Tx) @ Ω
         for k, (N, dComp) in enumerate(zip(self.N_set, self.dComp_set)):
-            T  = self.T_set[k]
-            Gc = self.Gc_set[k]
-            G  = np.full((N,3), 0.)
+            Tt  = self.Tt_set[k]
+            Tx  = self.Tx_set[k]
+            G   = np.full((N,3), 0.)
 
             # G will proj v_enu --> v_los
             if dComp==1:
-                L  = self.L_set[k]
+                Tl  = self.Tl_set[k]
                 for i in range(N):
-                    G[i,:] = L[i].reshape(-1,3) @ T[i] @ Gc[i]
+                    G[i,:] = Tl[i].reshape(-1,3) @ Tt[i] @ Tx[i]
 
             # G will only take v_en from v_enu (vstack G for each one of the N)
             else:
                 for i in range(N//dComp):
-                    G[i*dComp:(i+1)*dComp, :] = (T[i] @ Gc[i])[:dComp]
+                    G[i*dComp:(i+1)*dComp, :] = (Tt[i] @ Tx[i])[:dComp]
 
             # normalize the G matrix with radius
-            if not self.bias:
-                self.Gnorm = EARTH_RADIUS_A
-                G /= self.Gnorm
+            G /= self.Gnorm
 
             self.G_set.append(G)
-            vprint('built G shape', G.shape)
+            vprint(f'built G, shape={G.shape}')
         vprint('~')
 
 
-    def build_bias(self, fac=1e6, comp='los'):
-        """ add one column for est. of a constant offset parameter
+    def build_ramp(self, form='xy', ramp_std=None):
+        """add a ramp into the system
+        can be linear in x and/or y, w/ or w/o or purely a constant
+
         Convention:
-                 vlos + DC = vlos_ITRF  --- (1) insar data need DC to adjust to ITRF
-                                                DC is simply the ITRF plate motion at insar ref. point
-            vlos_ITRF - DC = vlos       --- (2) this is our Gm = d  (-DC so we need negative unity in G)
-                                                DC is estimated as the bias term(s) in model params
-        Inputs
-        fac     : scaling factor for the bias term unity in G
-                  nominally should be 1.0,
-                  but compare to other entries in G (~1e6), 1 is a super small number
-                  so have to use a big number factor here to avoid rank deficiency
-        comp    : bias compoenent vector
-                  'los'  -  a single offset in vlos
-                  'enu'  -  bias projection in e, n, u, respectively (e.g., los_unit_vec at ref_point)
+         e.g.,  insar observation has a unknown ramp in addition to the plate rotation:
+
+                vlos + ramp = vlos_obs  ---> G m_plate + R m_ramp = vlos_obs
         """
-        self.bias      = True
-        self.bias_fac  = fac
-        K = len(self.N_set)  # number of independent datasets
+        self.ramp_form   = form
+        self.ramp_fac_xy = 1e3
+        self.ramp_fac_c  = 1e6
 
-        if (comp=='los') or (comp==1):
-            self.bias_comp = 1
-            for k, (N, G) in enumerate(zip(self.N_set, self.G_set)):
-                for col in range(K):
-                    if col in self.bias_dset:
-                        if col == k:
-                                # should be negative unity due to above Convention!
-                                G = np.hstack([G, np.full((N, 1), -1.*fac)])
-                        else:
-                            G = np.hstack([G, np.full((N, 1), 0.)])
-                self.G_set[k] = np.array(G)
-                vprint(f'G added {comp} comp. bias, scaled {fac}, shape {G.shape}')
+        K = len(self.N_set)
 
-        elif (comp=='enu') or (comp==3):
-            self.bias_comp = 3
-            for k, (N, G, ref_los_vec) in enumerate(zip(self.N_set, self.G_set, self.ref_los_vec_set)):
-                for col in range(K):
-                    if col in self.bias_dset:
-                        if col == k:
-                                # should be negative unity due to above Convention!
-                                G = np.hstack([G, np.full((N, 3), -1.*fac*ref_los_vec)])
-                        else:
-                            G = np.hstack([G, np.full((N, 3), 0.)])
-                self.G_set[k] = np.array(G)
-                vprint(f'G added {comp} comp. biases with vector {ref_los_vec}, scaled {fac}, shape {G.shape}')
+        for k, (N, G, x, y) in enumerate(zip(self.N_set, self.G_set, self.x_set, self.y_set)):
+
+            if form == 'xy':
+                R = np.zeros((N, 2*K))
+                R[:, 2*k]   = x  *  self.ramp_fac_xy
+                R[:, 2*k+1] = y  *  self.ramp_fac_xy
+
+            elif form == 'x':
+                R = np.zeros((N, K))
+                R[:, k]   = x  *  self.ramp_fac_xy
+
+            elif form == 'y':
+                R = np.zeros((N, K))
+                R[:, k]   = y  *  self.ramp_fac_xy
+
+            elif form == 'xyc':
+                R = np.zeros((N, 3*K))
+                R[:, 2*k]   = x  *  self.ramp_fac_xy
+                R[:, 2*k+1] = y  *  self.ramp_fac_xy
+                R[:, 2*k+2] = 1  *  self.ramp_fac_c
+
+            elif form == 'c':
+                R = np.zeros((N, K))
+                R[:, k] = 1  *  self.ramp_fac_c
+
+            else:
+                sys.exit('build_ramp : wrong input {form}')
+
+            self.R_set.append(R)
+
+            vprint(f'built R, form={form}, shape={R.shape}')
+
+        # save prior ramp variance
+        if ramp_std is None and np.any(ramp_std is None):
+            # relaxed, no constraints
+            self.ramp_var_prior = 1e9 * np.ones(R.shape[1]//K)
         else:
-            sys.exit('wrong input {comp}')
+            # some constraints
+            self.ramp_var_prior = np.array(ramp_std)**2
+
 
         vprint('~')
 
 
-    def stack_data_operators(self, subtract_ref=False):
+    # def build_bias(self, fac=1e6, comp='los'):
+    #     ######
+    #     #  to be removed in the future
+    #     ######
+    #     """ add one column for est. of a constant offset parameter
+    #     Convention:
+    #              vlos + DC = vlos_ITRF  --- (1) insar data need DC to adjust to ITRF
+    #                                             DC is simply the ITRF plate motion at insar ref. point
+    #         vlos_ITRF - DC = vlos       --- (2) this is our Gm = d  (-DC so we need negative unity in G)
+    #                                             DC is estimated as the bias term(s) in model params
+    #     Inputs
+    #     fac     : scaling factor for the bias term unity in G
+    #               nominally should be 1.0,
+    #               but compare to other entries in G (~1e6), 1 is a super small number
+    #               so have to use a big number factor here to avoid rank deficiency
+    #     comp    : bias compoenent vector
+    #               'los'  -  a single offset in vlos
+    #               'enu'  -  bias projection in e, n, u, respectively (e.g., los_unit_vec at ref_point)
+    #     """
+    #     self.bias      = True
+    #     self.bias_fac  = fac
+    #     K = len(self.N_set)  # number of datasets (insar tracks)
+
+    #     if (comp=='los') or (comp==1):
+    #         self.bias_comp = 1
+    #         for k, (N, G) in enumerate(zip(self.N_set, self.G_set)):
+    #             for col in range(K):
+    #                 if col in self.bias_dset:
+    #                     if col == k:
+    #                             # negative unity due to convention in (2)!
+    #                             G = np.hstack([G, np.full((N, 1), -1.*fac)])
+    #                     else:
+    #                         G = np.hstack([G, np.full((N, 1), 0.)])
+    #             self.G_set[k] = np.array(G)
+    #             vprint(f'G added {comp} comp. bias, scaled {fac}, shape {G.shape}')
+
+    #     elif (comp=='enu') or (comp==3):
+    #         self.bias_comp = 3
+    #         for k, (N, G, ref_los_vec) in enumerate(zip(self.N_set, self.G_set, self.ref_los_vec_set)):
+    #             for col in range(K):
+    #                 if col in self.bias_dset:
+    #                     if col == k:
+    #                             # negative unity due to convention in (2)!
+    #                             G = np.hstack([G, np.full((N, 3), -1.*fac*ref_los_vec)])
+    #                     else:
+    #                         G = np.hstack([G, np.full((N, 3), 0.)])
+    #             self.G_set[k] = np.array(G)
+    #             vprint(f'G added {comp} comp. biases with vector {ref_los_vec}, scaled {fac}, shape {G.shape}')
+    #     else:
+    #         sys.exit('wrong input {comp}')
+
+    #     vprint('~')
+
+
+    def joint_dG(self, subtract_ref=False):
         """Stack G, d, and std arrays vertically (several datasets)
         + can subtract out the reference row from the rest of the rows [default=False]
           if False, you need to account for the bias term in model params
@@ -404,6 +487,11 @@ class blockModel:
                 vprint(f'reference G matrix: {subtract_ref}  REF_YX: {self.ref_yx_set[k]}')
             except:
                 vprint('no reference info found')
+
+            if len(self.R_set) !=0:
+                vprint('append the ramp term to the G matrix')
+                R = self.R_set[k]
+                G = np.hstack([G, R])
 
             # reference Gm=d at the reference point
             if (subtract_ref) and (self.ref_yx_set[k]!=(np.nan,np.nan)):
@@ -447,9 +535,9 @@ class blockModel:
             d = np.column_stack([ve, vn]).reshape(-1,1)
             s = np.column_stack([se, sn]).reshape(-1,1)
 
-            L = np.array([[1,0,0],   # dummy LOS projection vector
-                          [0,1,0],
-                          ])
+            Tl = np.array([[1,0,0],   # dummy LOS projection vector
+                           [0,1,0],
+                           ])
         else:
             dComp = 3
             comp = 'enu'
@@ -459,29 +547,32 @@ class blockModel:
             d = np.column_stack([ve, vn, vu]).reshape(-1,1)
             s = np.column_stack([se, sn, su]).reshape(-1,1)
 
-            L = np.array([[1,0,0],   # dummy LOS projection vector
-                          [0,1,0],
-                          [0,0,1]
-                          ])
+            Tl = np.array([[1,0,0],   # dummy LOS projection vector
+                           [0,1,0],
+                           [0,0,1]
+                           ])
 
-        L = np.stack([L]*N)
+        Tl = np.stack([Tl]*N)
 
         # cross product to vxyz
         x, y, z = ut.T_llr2xyz(lat, lon)
-        C = ut.R_crossProd_xyz(x, y, z)
+        Tx = ut.R_crossProd_xyz(x, y, z)
 
         # xyz transf to ENU
-        T = ut.R_xyz2enu(lat=lat, lon=lon)
+        Tt = ut.R_xyz2enu(lat=lat, lon=lon)
 
 
         # G matrix for gps
-        G = L @ T @ C
+        G = Tl @ Tt @ Tx
 
         # reshape the en components to 1d
         G = G.reshape(-1,3)
 
         # normalize the G matrix with radius
-        if not self.bias: G /= self.Gnorm
+        G /= self.Gnorm
+
+        # and you don't need to reference gps G matrix
+        # since gps data is not reference internally at one single station here
 
         # add to dataset
         self.N_set.append(N)
@@ -491,15 +582,22 @@ class blockModel:
         self.std_set.append(s.flatten())
         self.lats_set.append(lat)
         self.lons_set.append(lon)
-        self.los_inc_angle_set.append(None)
-        self.los_azi_angle_set.append(None)
+        self.inc_set.append(None)
+        self.azi_set.append(None)
 
         # add to the big system
-        nbias = self.G_all.shape[1] - G.shape[1]
-        G = np.hstack([G, np.zeros([G.shape[0], nbias])])
-        self.G_all   = np.vstack([self.G_all,   G])
-        self.d_all   = np.vstack([self.d_all,   d])
-        self.std_all = np.vstack([self.std_all, s])
+        if hasattr(self, 'G_all'):
+            extra_cols = self.G_all.shape[1] - G.shape[1]
+            G = np.hstack([G, np.zeros([G.shape[0], extra_cols])])
+            self.G_all   = np.vstack([self.G_all,   G])
+            self.d_all   = np.vstack([self.d_all,   d])
+            self.std_all = np.vstack([self.std_all, s])
+
+        else:
+            self.G_all   = np.array(G)
+            self.d_all   = np.array(d)
+            self.std_all = np.array(s)
+
         vprint(f'augment GNSS site at lat/lon = {lat}/{lon}')
         vprint('overall G shape'  , self.G_all.shape)
         vprint('overall d shape'  , self.d_all.shape)
@@ -793,6 +891,15 @@ class blockModel:
             ax2 = self.plot_Cov_diag(plotdiag, Diag, errname, ylim=[0,2.4])
             plt.close()
 
+
+        # Add prior model covariance
+        if hasattr(self, 'ramp_form'):
+            m_var_prior = 1e9 * np.ones(3)   # a big number, no regularization on euler pole
+            vars_prior = np.concatenate([m_var_prior, self.ramp_var_prior])
+            self.Cm_prior = np.diag(vars_prior)
+        else:
+            self.Cm_prior = None
+
         return
 
 
@@ -872,10 +979,10 @@ class blockModel:
 
                 if gpu_device is not None:
                     vprint(f'use gpu {gpu_device}')
-                    res = ut.fullCov_cuda_LS_blockwise(self.G_all, self.d_all, self.Cx, gpu_device)
+                    res = ut.fullCov_cuda_LS_blockwise(self.G_all, self.d_all, self.Cx, self.Cm_prior, gpu_device)
                 else:
                     vprint(f'no gpu')
-                    res = ut.fullCov_cuda_LS_blockwise(self.G_all, self.d_all, self.Cx)
+                    res = ut.fullCov_cuda_LS_blockwise(self.G_all, self.d_all, self.Cx, self.Cm_prior)
 
         self.m_all  = res[0]
         self.Cm     = res[1]
@@ -886,10 +993,9 @@ class blockModel:
         self.cond   = res[6]
 
         # normalize the G matrix with radius, scale back m
-        if not self.bias:
-            self.m_all /=  self.Gnorm
-            self.Cm    /= (self.Gnorm**2)
-            self.m_std /=  self.Gnorm
+        self.m_all /=  self.Gnorm
+        self.Cm    /= (self.Gnorm**2)
+        self.m_std /=  self.Gnorm
 
         timer.stop()
         print(timer.readable_elapsed())
@@ -943,29 +1049,45 @@ class blockModel:
             if len(self.N_set) > 1:
                 ref_rows += np.cumsum(np.insert(np.array(self.N_set[:len(ref_rows)-1]), 0, 0))
             ref_rows  = ref_rows[~np.isnan(ref_rows)].astype(int)
-            G_all = np.insert(self.G_all, ref_rows, [0.,0.,0.], axis=0)
+            blank_row = np.zeros(self.G_all.shape[1])
+            G_all = np.insert(self.G_all, ref_rows, blank_row, axis=0)
         else:
             G_all = self.G_all
 
         # de-normalize the G matrix with radius
-        if not self.bias: G_all = np.array(G_all) * self.Gnorm
+        G_all = np.array(G_all) * self.Gnorm
 
         # forward predict from model params
         self.v_pred_all = G_all @ self.m_all
         vprint(f'model prediction on all samples: {self.v_pred_all.shape}')
 
-        # get pole & bias params & prediction for each dataset
+        # get estimated euler pole
         self.m = self.m_all[:3]   # the rotation pole vector
 
-        # initialize estimated bias
-        if self.bias:
-            # N dsets have N biases, if not estimated, remains nan
-            # shape = (N,bComp) = (N,1) for 'los' = (N,3) for 'enu'
-            self.m_bias = np.full((len(self.N_set), bComp), np.nan)  # init nan
+        # get estimated ramp (still in meter/year/pixel)
+        if hasattr(self, 'ramp_form'):
 
-            # check any input DCs, replace as default
-            if len(self.DCs) != len(self.m_bias):
-                sys.exit('input DCs length does not match m_bias (datasets) length!')
+            if self.ramp_form in ['xy','x','y']:
+                self.ramps = self.m_all[3:] * self.ramp_fac_xy
+
+            elif self.ramp_form == 'c':
+                self.ramps = self.m_all[3:] * self.ramp_fac_c
+
+            elif self.ramp_form == 'xyc':
+                self.ramps = self.m_all[3:] * np.array([self.ramp_fac_xy, self.ramp_fac_xy, self.ramp_fac_c]).reshape(-1,1)
+
+        else:
+            self.ramps = None
+
+        # # initialize estimated bias
+        # if self.bias:
+        #     # N dsets have N biases, if not estimated, remains nan
+        #     # shape = (N,bComp) = (N,1) for 'los' = (N,3) for 'enu'
+        #     self.m_bias = np.full((len(self.N_set), bComp), np.nan)  # init nan
+
+        #     # check any input DCs, replace as default
+        #     if len(self.DCs) != len(self.m_bias):
+        #         sys.exit('input DCs length does not match m_bias (datasets) length!')
 
         # data prediction array in each dset
         self.v_pred_set = []
@@ -977,26 +1099,26 @@ class blockModel:
             vprint(f'  set{k+1}: {r0} to {r1} = {N*dComp} samples')
             self.v_pred_set.append(self.v_pred_all[r0:r1].reshape(-1,dComp))
 
-            # get the bias predictions either in {LOS, ENU->LOS}
-            # these m_bias has the bias_fac reverted back to physical scale
-            if self.bias:
-                if k < len(self.bias_dset):
-                    dset = int(self.bias_dset[k])           # which dataset
+        #     # get the bias predictions either in {LOS, ENU->LOS}
+        #     # these m_bias has the bias_fac reverted back to physical scale
+        #     if self.bias:
+        #         if k < len(self.bias_dset):
+        #             dset = int(self.bias_dset[k])           # which dataset
 
-                    # estimated bias params (revert scaling)
-                    r0 = int(np.sum(self.N_set[:dset]))     # starting G row
-                    c0 = int(3 +  k    * bComp)             # starting G col   int(3 + k)
-                    c1 = int(3 + (k+1) * bComp)             # ending   G col   int(3 +  k    * bComp)
+        #             # estimated bias params (revert scaling)
+        #             r0 = int(np.sum(self.N_set[:dset]))     # starting G row
+        #             c0 = int(3 +  k    * bComp)             # starting G col   int(3 + k)
+        #             c1 = int(3 + (k+1) * bComp)             # ending   G col   int(3 +  k    * bComp)
 
-                    # raw bias(s)
-                    los   = G_all[r0, c0:c1].flatten()
-                    mbias = self.m_all[c0:c1].flatten()
-                    self.m_bias[dset] = np.linalg.norm(los) * mbias
+        #             # raw bias(s)
+        #             los   = G_all[r0, c0:c1].flatten()
+        #             mbias = self.m_all[c0:c1].flatten()
+        #             self.m_bias[dset] = np.linalg.norm(los) * mbias
 
-                    # projected los bias --> fill back to DCs
-                    self.DCs[dset] = - ( los @ mbias )
+        #             # projected los bias --> fill back to DCs
+        #             self.DCs[dset] = - ( los @ mbias )
 
-        self.DCs = np.array(self.DCs)
+        # self.DCs = np.array(self.DCs)
 
         vprint(f'split model prediction into {k+1} sets')
         vprint('~')
@@ -1067,33 +1189,34 @@ class blockModel:
         N      = len(block_new.N_set)
         bComp  = int(block_new.bias_comp)
 
-        # have you ever added biases in self.obj?
-        if block_new.bias:
-            # if so, recreate G with full bias terms
-            block_new.G_set = []
-            block_new.build_G()
-            block_new.bias_dset = np.arange(N)
-            block_new.build_bias(fac=1e6, comp=bComp)
-            block_new.stack_data_operators()
+        # # have you ever added bias in self.obj?
+        # if block_new.bias:
+        #     # if so, recreate G with the full ramp term
+        #     block_new.G_set = []
+        #     block_new.build_G(rerun=False)
+        #     block_new.bias_dset = np.arange(N)
+        #     #block_new.build_bias(fac=1e6, comp=bComp)
+        #     block_new.build_ramp(form=block_new.form)
+        #     block_new.joint_dG()
 
-            # pole forward predict all biases
-            if poleDC:
-                los_vecs = np.array( block_new.ref_los_vec_set )
-                lats     = np.array( block_new.ref_lalo_set )[:,0]
-                lons     = np.array( block_new.ref_lalo_set )[:,1]
-                dc_pmm, dc_pmm_std = DC_from_pole(inpole, lats, lons, los_vecs, bComp=bComp)
-                dc_pmm = dc_pmm.flatten()
-                dc_pmm_std = dc_pmm_std.flatten()
-                m_make = np.concatenate([m_make, dc_pmm/block_new.bias_fac])
+        #     # pole forward predict all biases
+        #     if poleDC:
+        #         los_vecs = np.array( block_new.ref_los_vec_set )
+        #         lats     = np.array( block_new.ref_lalo_set )[:,0]
+        #         lons     = np.array( block_new.ref_lalo_set )[:,1]
+        #         dc_pmm, dc_pmm_std = DC_from_pole(inpole, lats, lons, los_vecs, bComp=bComp)
+        #         dc_pmm = dc_pmm.flatten()
+        #         dc_pmm_std = dc_pmm_std.flatten()
+        #         m_make = np.concatenate([m_make, dc_pmm/block_new.bias_fac])
 
-            # no bias (set all DC shift to 0)
-            else:
-                m_make = np.concatenate([m_make, np.zeros(N * bComp)])
+        #     # no bias (set all DC shift to 0)
+        #     else:
+        #         m_make = np.concatenate([m_make, np.zeros(N * bComp)])
 
 
-        else:
-            # do nothing, use normal G and m_make
-            pass
+        # else:
+        #     # do nothing, use normal G and m_make
+        #     pass
 
         # create params
         block_new.m_all = m_make.reshape(-1,1)

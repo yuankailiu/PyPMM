@@ -23,9 +23,31 @@ DATADICT = {
             'a057' : {'std_scale':1, 'maindir':'hpc_topsStack/mintpy'    },
             'd021' : {'std_scale':1, 'maindir':'hpc_isce_stack/mintpy_1' },
             'd123' : {'std_scale':1, 'maindir':'hpc_isce_stack/mintpy_1' },
-            #'a014WA' : {'std_scale':1, 'maindir':'hpc_isce_stack/mintpy_1' },
             'd006' : {'std_scale':1, 'maindir':'hpc_topsStack2/mintpy'   },
             'd108' : {'std_scale':1, 'maindir':'hpc_topsStack2/mintpy'   , 'ramp':'/marmot-nobak/ykliu/aqaba/topsStack/mosaic/itrf14/data/yemen/post-ionoCorrection/vel_d108_mskRamp.h5'},
+            #'a014WA' : {'std_scale':1, 'maindir':'hpc_isce_stack/mintpy_1' },
+            }
+
+# paper revision process, ramp rate std [meter/yr/pixel]
+rampRateErr = {'a087': (3.15318152410333e-07  , 5.096963377305148e-07),
+               'a014': (2.447958495788524e-07 , 3.949107213228061e-07),
+               'a116': (3.5157561528016907e-07, 5.303506598162267e-07),
+               'd021': (2.960456619763153e-07 , 5.51412149021013e-07),
+               'd123': (2.2305233428011914e-07, 4.153723924711564e-07),
+               'd006': (1.180642928456881e-06 , 1.3414208805574935e-06),
+               'd108': (9.342749468243502e-07 , 1.2271907587535428e-06),
+               'a028': (1.739132432103894e-06 , 1.4972728776128665e-06),
+               'a057': (7.659508728564257e-07 , 1.024977881963351e-06)}
+DATADICT = {
+            'a087' : {'sig_ramp':rampRateErr['a087'], 'maindir':'hpc_isce_stack/mintpy_1' },
+            'a014' : {'sig_ramp':rampRateErr['a014'], 'maindir':'hpc_isce_stack/mintpy_1' },
+            'a116' : {'sig_ramp':rampRateErr['a116'], 'maindir':'hpc_isce_stack/mintpy_1' },
+            'a028' : {'sig_ramp':rampRateErr['a028'], 'maindir':'hpc_topsStack/mintpy'    },
+            'a057' : {'sig_ramp':rampRateErr['a057'], 'maindir':'hpc_topsStack/mintpy'    },
+            'd021' : {'sig_ramp':rampRateErr['d021'], 'maindir':'hpc_isce_stack/mintpy_1' },
+            'd123' : {'sig_ramp':rampRateErr['d123'], 'maindir':'hpc_isce_stack/mintpy_1' },
+            'd006' : {'sig_ramp':rampRateErr['d006'], 'maindir':'hpc_topsStack2/mintpy'   },
+            'd108' : {'sig_ramp':rampRateErr['d108'], 'maindir':'hpc_topsStack2/mintpy'   , 'ramp':'/marmot-nobak/ykliu/aqaba/topsStack/mosaic/itrf14/data/yemen/post-ionoCorrection/vel_d108_mskRamp.h5'},
             }
 
 FLAG = {
@@ -33,7 +55,7 @@ FLAG = {
     'projName'  : 'arabia',            # choose ['sinai', 'arabia', ...]
     'plateName' : 'Arabia',            # plate name for reading PMM, boundary files, etc.
     'nickname'  : 'arab'  ,            # a short name
-    'featName'  : ['out9'],             # output path strings
+    'featName'  : ['out10'],             # output path strings
 
     # i/o paths
     'dtype'     : 'real'            ,  # type of dataset  'real'   : real data
@@ -64,6 +86,7 @@ FLAG = {
     #'priorDC'   : False              ,   # use known DC shift from PMM, ex: False, 'all', ['your_track_string',]
 
     # model G
+    'est_ramp'  : True               ,   # estimate an x-y plane
     'refG'      : True               ,   # reference the G matrix
     #'biases'    : False              ,   # components in the bias ['enu', 'los', False]
     #'initMdl'   : False              ,   # a-priori initial model for iterations (e.g., ITRF2014)
@@ -76,7 +99,7 @@ FLAG = {
     #'diaglzCov' : False              ,   # {True,False} to diagonalize the coavarinace matrix
     #'loadLD'    : False              ,   # {True,False} to load pre-saved diagonalized coavarinace matrix (False will rerun diagonalization)
     #'saveLD'    : False              ,   # {True,False} to save & overwrite diagonalized coavarinace matrix
-    'gpuno'     : 2                  ,   # gpu device number [0-7] for KAMB (valid when errform=full and diaglzCov=False)
+    'gpuno'     : 7                  ,   # gpu device number [0-7] for KAMB (valid when errform=full and diaglzCov=False)
 
     # Monte carlo realizations
     'MC_num'    : False               ,   # False or number of realizations
@@ -218,7 +241,7 @@ def run_main(dataDict, flag, poleDict, gpsGDf=None, ref_i=None, extname=None, co
 
     if flag.errname in ['Cds', 'Cdts', 'Cx'] and Cds_dict is None:
         # variogram
-        insarDeramp, Cds_dict = calc_insar_variogram(dataDict, out_dir=out_dir, distmax=300., rampEst=True, frac=1.0)
+        insarDeramp, Cds_dict = calc_insar_variogram(dataDict, out_dir=out_dir, distmax=300., rampEst=True, frac=0.1)
 
         # plot
         plot_all_variograms(dataDict, insarDeramp, out_dir, savefig=out_dir/f'semivariograms.pdf')
@@ -260,10 +283,10 @@ def run_main(dataDict, flag, poleDict, gpsGDf=None, ref_i=None, extname=None, co
         else:
             # m0 = np.array([[ 5.74061937e-09],[-6.77681770e-12],[ 7.58764100e-09]])  # 7 tracks result
             # m0 = np.array([[ 6.00759390e-09],[-1.16945673e-10],[ 7.66076665e-09]])  # 9 track result
-            #blk.insert_Cps(mc_dir='out7_realMC_strict_refG_Cdts_full', m0=None, subset=[0,500], savefile=Cp_file)
 
-            #blk.insert_Cps(mc_dir='out8_realMC_strict_refG_Cdts_full', m0=None, subset=[0,1000], savefile=Cp_file)
-            blk.compute_Cp(mc_dir='out9_realMC_strict_refG_Cdts_full', m0=None, subset=[0,200], savefile=Cp_file)
+            #blk.insert_Cps(mc_dir='out7_realMC_strict_refG_Cdts_full', m0=None, subset=[0,500], savefile=Cp_file)
+            blk.insert_Cps(mc_dir='out8_realMC_strict_refG_Cdts_full', m0=None, subset=[0,1000], savefile=Cp_file)
+            #blk.compute_Cp(mc_dir='out9_realMC_strict_refG_Cdts_full', m0=None, subset=[0,200], savefile=Cp_file)
 
     blk = run_inversion(blk, flag, extname=ext, plotCov=out_dir/f'Cov.pdf')
 
@@ -329,7 +352,8 @@ if __name__ == "__main__":
         #############################
         # no gps
         flag, dataDict = user_inputs([*DATADICT])
-        run_main(dataDict, flag, poleDict, GPSDF_EW, extname='9sar')
+        run_main(dataDict, flag, poleDict, extname='9sar')  # pure-insar, out10, with ramp_rate_err and MC1000
+        #run_main(dataDict, flag, poleDict, GPSDF_EW, extname='9sar')
 
         # #############################
         # # no gps, NW insar

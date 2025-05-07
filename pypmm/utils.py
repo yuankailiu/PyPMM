@@ -261,7 +261,7 @@ def weighted_LS(G, d, std=None, cond_thres=1e-9):
     return m, Cm, m_std, e2, rank, singv, cond
 
 
-def fullCov_LS(G, d, Cx=None):
+def fullCov_LS(G, d, Cx=None, Cm0=None):
     """least squares with a full covariance matrix
 
     See: + Tarantola, 2005
@@ -284,7 +284,10 @@ def fullCov_LS(G, d, Cx=None):
     """
     # linalg
     iCx   = scipy.linalg.inv(Cx)                                ; print(' :: got Cx^-1')
-    Cm    = scipy.linalg.inv(np.dot(  np.dot(G.T, iCx), G ) )   ; print(' :: got 1st term, Cm')
+    if Cm0 is None:
+        Cm = scipy.linalg.inv(np.dot(  np.dot(G.T, iCx), G ) )  ; print(' :: got 1st term, Cm')
+    else:
+        Cm = scipy.linalg.inv(np.dot(  np.dot(G.T, iCx), G ) + scipy.linalg.inv(Cm0)) ; print(' :: got 1st term, Cm')
     Two   = np.dot( np.dot( G.T, iCx ), d )                     ; print(' :: got 2nd term')
     mpost = np.dot( Cm, Two )                                   ; print(' :: got m_post')
     m_std = np.sqrt(np.diag(Cm))
@@ -301,7 +304,7 @@ def fullCov_LS(G, d, Cx=None):
     return mpost, Cm, m_std, e2, rank, singv, cond
 
 
-def fullCov_cuda_LS(G, d, Cx=None, gpu_device=0):
+def fullCov_cuda_LS(G, d, Cx=None, Cm0=None, gpu_device=0):
     """least squares with a full covariance matrix
 
     INPUTS:
@@ -317,10 +320,16 @@ def fullCov_cuda_LS(G, d, Cx=None, gpu_device=0):
     print(' pyre cuda matrix...')
     gd  = cuda.matrix(source=d , dtype=precision)           ; print(f' cuda d matrix')
     gG  = cuda.matrix(source=G , dtype=precision)           ; print(f' cuda G matrix')
-    gCi = cuda.matrix(source=Cx, dtype=precision).inverse() ; print(f' cuda Cx matrix')
+    gCi = cuda.matrix(source=Cx, dtype=precision).inverse() ; print(f' cuda Cx inv matrix')
+    if Cm0 is not None:
+        gCm0i = cuda.matrix(source=Cm0, dtype=precision).inverse() ; print(f' cuda Cm0 inv matrix')
 
     print(f' cublas linalg: 1st term, Cm')
-    gCm  = cuda.cublas.gemm(cuda.cublas.gemm(gG, gCi, transa=1), gG).inverse()
+    if Cm0 is None:
+        gCm  = cuda.cublas.gemm(cuda.cublas.gemm(gG, gCi, transa=1), gG).inverse()
+    else:
+        gCm  = (cuda.cublas.gemm(cuda.cublas.gemm(gG, gCi, transa=1), gG)+gCm0i).inverse()
+
     print(f' cublas linalg: 2nd term')
     gTwo = cuda.cublas.gemm(cuda.cublas.gemm(gG, gCi, transa=1), gd)
     print(f' cublas linalg: m')
@@ -344,7 +353,7 @@ def fullCov_cuda_LS(G, d, Cx=None, gpu_device=0):
     return mpost, Cm, m_std, e2, rank, singv, cond
 
 
-def fullCov_cuda_LS_blockwise(G, d, Cs, gpu_device=None):
+def fullCov_cuda_LS_blockwise(G, d, Cs, Cm0=None, gpu_device=None):
     """least squares with a full covariance matrix
 
     fullCov_cuda_LS() with block-by-block covariance matrices
@@ -381,8 +390,14 @@ def fullCov_cuda_LS_blockwise(G, d, Cs, gpu_device=None):
     print(' :: got G.T Cx^-1')
 
 
-    # Two: Cm = (One @ G)^-1
-    Cm    = scipy.linalg.inv(One @ G)
+    # Two: Cm = (One @ G)^-1            (without prior model covariance)
+    if Cm0 is None:
+        Cm    = scipy.linalg.inv(One @ G)
+
+    # Two: Cm = (One @ G + Cm0^-1)^-1   (with prior model covariance)
+    else:
+        Cm    = scipy.linalg.inv(One @ G + scipy.linalg.inv(Cm0))
+
     m_std = np.sqrt(np.diag(Cm))
     print(' :: got Cm = ( G.T Cx^-1 G )^-1')
 
@@ -477,7 +492,7 @@ def get_array4csi( dataDict : dict   | None = None,  # option 1
     if all([dataDict, name]) is not None:
         print('read original input data from [dataDict]')
         dsets = dataDict[name]
-        (vlos, vstd, los_inc_angle, los_azi_angle, lat, lon, roi, ref_los_vec, refyx, reflalo, bbox, std_scl, paths, comp) = dsets
+        (vlos, vstd, los_inc_angle, los_azi_angle, lat, lon, roi, ref_los_vec, refyx, reflalo, bbox, std_scl, paths, comp, ramp_rate_err) = dsets
         arr = np.array(vlos[roi])
         lat = np.array(lat[roi])
         lon = np.array(lon[roi])

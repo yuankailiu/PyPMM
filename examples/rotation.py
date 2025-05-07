@@ -21,7 +21,7 @@ from pyproj import Geod
 
 # still depends on MintPy
 from mintpy.utils import readfile, utils as mut
-from mintpy.multilook import multilook_data
+from mintpy.stdproc.multilook import multilook_data_kai as multilook_data
 
 # csi for calc semivariogram
 import csi.insar as insar
@@ -461,6 +461,9 @@ def flag2obj(flag, dataDict=None):
     if  'refG'    in flag and flag['refG']    :  flag['featName'] += ['refG']
     else                                      :  flag['refG'] = False
 
+    if  'est_ramp'in flag and flag['est_ramp']:  flag['featName'] += ['estRamp']
+    else                                      :  flag['est_ramp'] = False
+
     if  'biases'  in flag and flag['biases']  :  flag['featName'] += [flag['biases']+'Bias']
     else                                      :  flag['biases'] = False
 
@@ -579,17 +582,17 @@ def inputflags2read(dataDict, flag, **kwargs):
             rampfile = None
 
         # read from files
-        dsets = read_data_geom( velfile                      ,
-                                geofile                      ,
-                                stdfile                      ,
-                                roifile     = roifile        ,
-                                rampfile    = rampfile       ,
-                                looks       = flag.looks     ,
-                                flag_demean = flag.demean    ,
-                                flag_conStd = flag.conStd    ,
-                                )
+        input_data = read_data_geom( velfile                      ,
+                                     geofile                      ,
+                                     stdfile                      ,
+                                     roifile     = roifile        ,
+                                     rampfile    = rampfile       ,
+                                     looks       = flag.looks     ,
+                                     flag_demean = flag.demean    ,
+                                     flag_conStd = flag.conStd    ,
+                                     )
 
-        (vlos, vstd, inc_angle, azi_angle, lats, lons, roi, ref_los_vec, refyx, reflalo, bbox) = dsets
+        (vlos, vstd, inc_angle, azi_angle, lats, lons, roi, ref_los_vec, refyx, reflalo, bbox) = input_data
         refy, refx = refyx[0], refyx[1]
 
         # ------------ add artificial noise ----------------
@@ -631,6 +634,8 @@ def inputflags2read(dataDict, flag, **kwargs):
         # ---------- get the std input scaling factor ------------
         std_scl = item.get('std_scale', 1.0)
 
+        # ---------- paper revision process: get ramp rate error ------------
+        ramp_rate_err = item.get('sig_ramp', None)
 
         # ------- build the dataDict: a tuple of data input ------
         paths = {}
@@ -639,7 +644,7 @@ def inputflags2read(dataDict, flag, **kwargs):
         paths['stdfile'] = stdfile
         paths['roifile'] = roifile
         comp = 'los'
-        dataDict[name] = (vlos, vstd, inc_angle, azi_angle, lats, lons, roi, ref_los_vec, refyx, reflalo, bbox, std_scl, paths, comp)
+        dataDict[name] = (vlos, vstd, inc_angle, azi_angle, lats, lons, roi, ref_los_vec, refyx, reflalo, bbox, std_scl, paths, comp, ramp_rate_err)
 
 
     # ------ add synthetic data from a existing geometry ------
@@ -1202,7 +1207,7 @@ def plot_datapdf(block, dataDict, savefig=None):
     density  = True
     fig, ax = plt.subplots(figsize=[10,3], ncols=3, sharey=False, gridspec_kw={'wspace':0.1})
     res_all = []
-    for k, dsets in dataDict.items():
+    for k in dataDict.keys():
         ki  = block.names.index(k)
         obs = block.Obs_set[ki].flatten() * 1e3
         std = block.std_set[ki].flatten() * 1e3
@@ -1545,6 +1550,7 @@ def plot_quadriptych(poleDict, frames=['ITRF2014'], compare=None,
             ax4 = plot_plate_motion(plate_boundary   = bndPoly    ,
                                     epole_obj        = epole_obj  ,
                                     compare_duel     = compare    ,
+                                    compare_stat     = 'diff'     ,
                                     satellite_height = sat_height ,
                                     center_lalo      = center_lalo,
                                     map_style        = map_style  ,
@@ -1879,10 +1885,10 @@ def report_avg_covariance(dataDict, Cds_dict, sk=20, txtfile='Cov.txt', savefile
     print(header)
     with open(txtfile, 'w') as file:
         file.write(header+'\n')
-        for i, (name, dsets) in enumerate(dataDict.items()):
-            roi = dsets[6]
-            std = dsets[1][roi]
-            fac = dsets[11]  # un-used here
+        for i, (name, input_data) in enumerate(dataDict.items()):
+            roi = input_data[6]
+            std = input_data[1][roi]
+            fac = input_data[11]  # un-used here
             cd_sig = 1e3 * np.nanmean(std)  # use the un-scaled std (the original version)
             cp_sig = 1e3 * np.nanmean(np.diag(Cds_dict[name][::sk,::sk])**0.5)
             print_str = f'{name:>8s} {cd_sig:>7.4f} {cp_sig:>7.4f} {fac:>4} {cd_sig+cp_sig:>7.4f}'
@@ -1963,8 +1969,8 @@ def run_build_block(dataDict, flag, pole_ref=None, gpsGDf=None, Cds_dict=None, e
     block = blockModel(name=projName, print_msg=True)
 
     ## 1. feed data and geometry, one track at a time
-    for ki, (name, dsets) in enumerate(dataDict.items()):
-        (vlos, vstd, los_inc_angle, los_azi_angle, lats, lons, roi, ref_los_vec, refyx, reflalo, bbox, std_scl, paths, comp) = dsets
+    for ki, (name, input_data) in enumerate(dataDict.items()):
+        (vlos, vstd, los_inc_angle, los_azi_angle, lats, lons, roi, ref_los_vec, refyx, reflalo, bbox, std_scl, paths, comp, ramp_rate_err) = input_data
 
         # **********
         # account for known DC shift(s), put vlos to ITRF frame
@@ -1996,16 +2002,6 @@ def run_build_block(dataDict, flag, pole_ref=None, gpsGDf=None, Cds_dict=None, e
                         )
 
     ## 2 - build G
-    # form the Gc part of G matrix: pole cross product with location = v_xyz
-    block.build_Gc()
-
-    # form the T part of G matrix: transform v_xyz to v_enu
-    block.build_T()
-
-    # form the L part of G matrix: project v_enu to InSAR LOS
-    block.build_L()
-
-    # combine above parts to a whole G
     block.build_G()
 
     ## 3. account for referenced motion
@@ -2016,7 +2012,12 @@ def run_build_block(dataDict, flag, pole_ref=None, gpsGDf=None, Cds_dict=None, e
         # add DC constant to G matrix
         block.build_bias(fac=1e6, comp=flag.biases)
 
-    block.stack_data_operators(flag.refG)
+    if flag.est_ramp:
+        # collect all ramp stds
+        ramp_stds = np.array([err for input_data in dataDict.values() for err in input_data[14]])
+        block.build_ramp(form='xy', ramp_std=ramp_stds)
+
+    block.joint_dG(flag.refG)
 
 
     ## 4. augment with GPS stations?
@@ -2107,7 +2108,7 @@ def run_inversion_Cds(dataDict, block, flag, Cds_set, plot=False):
         plt.close()
 
     ## inversion
-    # block.stack_data_operators(flag.refG)
+    # block.joint_dG(flag.refG)
     block.invert(errform=flag.errform, diagonalize=flag.diaglzCov, gpu_device=flag.gpuno, save=True, load=True)
     block.get_model_pred()
     block.get_residRMS()
@@ -2238,7 +2239,7 @@ def plot_geodesic_profile(pole, poleA,
         ax1.spines['right'].set_visible(False)
 
 
-    if plot_fig2:
+    if plot_fig2 and blk is not None:
         ### Figure 2 ###
         # LOS DCs for tracks
         # (get the inverted column, set nan bias to 0, since those rows had data shifted already)
@@ -2386,11 +2387,8 @@ def plot_geodesic_profile(pole, poleA,
                                 name = 'dsc'
                                 )
 
-            plate.build_Gc()
-            plate.build_T()
-            plate.build_L()
             plate.build_G()
-            plate.stack_data_operators(subtract_ref=False)
+            plate.joint_dG(subtract_ref=False)
 
             # plate locations G for vlos
             G  = np.array(plate.G_all)

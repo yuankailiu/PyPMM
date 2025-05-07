@@ -93,7 +93,8 @@ class EulerPole:
                 wx, wy, wz = PMM[name].omega_x, PMM[name].omega_y, PMM[name].omega_z
                 wx_sig, wy_sig, wz_sig = PMM[name].omega_x_sig, PMM[name].omega_y_sig, PMM[name].omega_z_sig
             else:
-                print(f'a user-defined new plate: {name}')
+                if name is not None:
+                    print(f'a user-defined new plate: {name}')
 
         # check - unit
         if unit.lower().startswith('mas'):
@@ -124,12 +125,12 @@ class EulerPole:
             raise ValueError(f'Unrecognized rotation rate unit: {unit}! Use mas/yr or deg/Ma')
 
         # calculate Euler vector and pole
-        if all([wx, wy, wz]):
+        if all(var is not None for var in [wx, wy, wz]):
             # calc Euler pole from vector
             #pole_lat, pole_lon, rot_rate = cart2sph(wx, wy, wz)
             pole_lat, pole_lon, rot_rate = ut.T_xyz2llr(wx, wy, wz, e=0.)
 
-        elif all([pole_lat, pole_lon, rot_rate]):
+        elif all(var is not None for var in [pole_lat, pole_lon, rot_rate]):
             # calc Euler vector from pole
             #wx, wy, wz = sph2cart(pole_lat, pole_lon, r=rot_rate)
             wx, wy, wz = ut.T_llr2xyz(pole_lat, pole_lon, R=rot_rate, e=0)
@@ -308,7 +309,7 @@ class EulerPole:
                 xyz_cov     = in_err['xyz_cov']             # rad^2/year^2
                 xyz_std     = np.diag(xyz_cov)**0.5         # rad/year
                 xyz_mas_std = xyz_std/MAS2RAD               # mas/year
-                xyz_deg_std = np.rad2deg(xyz_std*1e6)       # deg/Ma
+                xyz_deg_std = np.rad2deg(xyz_std) * 1e6     # deg/Ma
 
         # no error source is identified
         else:
@@ -352,7 +353,7 @@ class EulerPole:
         sph_lat_std = (sph_cov_deg[0,0]**0.5)            # deg
         sph_lon_std = (sph_cov_deg[1,1]**0.5)            # deg
         sph_mas_std = (sph_cov_rad[2,2]**0.5) / MAS2RAD  # mas/year
-        sph_deg_std = (sph_cov_deg[2,2]**0.5)*1e6        # deg/Ma
+        sph_deg_std = (sph_cov_deg[2,2]**0.5) * 1e6      # deg/Ma
 
         # return output
         self.xyz_cov = np.array(xyz_cov)
